@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">数据资产管理</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar { background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); }
+        .content-wrapper { margin-top: 2rem; }
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .table thead {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="bi bi-cpu"></i> AI数据资产平台</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/concepts">概念</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/entities">实体</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/data-assets">数据资产</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/charts">图表</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/knowledge-base">知识库</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/knowledge-graph">知识图谱</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container content-wrapper">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-hdd-stack text-info"></i> 数据资产管理</h2>
+            <button class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#addModal">
+                <i class="bi bi-plus-lg"></i> 添加资产
+            </button>
+        </div>
+
+        <div class="table-card">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>格式</th>
+                        <th>大小</th>
+                        <th>所有者</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="assetsTableBody">
+                    <tr><td colspan="7" class="text-center py-4 text-muted">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">添加数据资产</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addForm">
+                        <div class="mb-3">
+                            <label class="form-label">名称</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">类型</label>
+                            <select class="form-select" name="type">
+                                <option value="数据库">数据库</option>
+                                <option value="文件">文件</option>
+                                <option value="数据表">数据表</option>
+                                <option value="API">API</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">格式</label>
+                            <select class="form-select" name="format">
+                                <option value="SQL">SQL</option>
+                                <option value="JSON">JSON</option>
+                                <option value="CSV">CSV</option>
+                                <option value="XML">XML</option>
+                                <option value="Parquet">Parquet</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">大小 (MB)</label>
+                            <input type="number" class="form-control" name="size" placeholder="例如：1024">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">所有者</label>
+                            <input type="text" class="form-control" name="owner">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-info text-white" onclick="saveAsset()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function formatSize(bytes) {
+            if (!bytes) return '-';
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        async function loadAssets() {
+            const response = await fetch('/data-assets/api/all');
+            const result = await response.json();
+            
+            const tbody = document.getElementById('assetsTableBody');
+            if (result.data && result.data.length > 0) {
+                tbody.innerHTML = result.data.map(a => `
+                    <tr>
+                        <td>${a.id}</td>
+                        <td><strong>${a.name}</strong></td>
+                        <td><span class="badge bg-info">${a.type}</span></td>
+                        <td>${a.format || '-'}</td>
+                        <td>${formatSize(a.size)}</td>
+                        <td>${a.owner || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editAsset(${a.id})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAsset(${a.id})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">暂无数据</td></tr>';
+            }
+        }
+
+        async function saveAsset() {
+            const form = document.getElementById('addForm');
+            const data = {
+                name: form.querySelector('[name="name"]').value,
+                type: form.querySelector('[name="type"]').value,
+                format: form.querySelector('[name="format"]').value,
+                size: parseInt(form.querySelector('[name="size"]').value) * 1024 * 1024 || 0,
+                owner: form.querySelector('[name="owner"]').value
+            };
+
+            const response = await fetch('/data-assets/api/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+                form.reset();
+                loadAssets();
+            }
+        }
+
+        async function deleteAsset(id) {
+            if (!confirm('确定要删除这个资产吗？')) return;
+            await fetch(`/data-assets/api/${id}`, { method: 'DELETE' });
+            loadAssets();
+        }
+
+        document.addEventListener('DOMContentLoaded', loadAssets);
+    </script>
+</body>
+</html>

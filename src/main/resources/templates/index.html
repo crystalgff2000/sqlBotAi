@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">AI数据资产平台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #6c757d;
+            --accent-color: #28a745;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #3a5a8a 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+        
+        .module-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+        }
+        
+        .stats-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+        }
+        
+        .btn-primary:hover {
+            background: #3a5a8a;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-cpu"></i> AI数据资产平台
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/concepts">概念</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/entities">实体</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/data-assets">数据资产</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/charts">图表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/knowledge-base">知识库</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/knowledge-graph">知识图谱</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row mb-5">
+            <div class="col-lg-12 text-center">
+                <h1 class="display-4 fw-bold text-dark mb-3">
+                    <i class="bi bi-database-gear"></i> AI数据资产平台
+                </h1>
+                <p class="lead text-muted">企业数据资产统一管理与智能应用</p>
+                <hr class="my-4">
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="row mb-5">
+            <div class="col-md-3 mb-3">
+                <div class="stats-card">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-lightbulb fs-2 text-warning"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">概念数量</h6>
+                            <h4 class="mb-0" id="conceptCount">0</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card" style="border-left-color: #28a745;">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-box fs-2 text-success"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">实体数量</h6>
+                            <h4 class="mb-0" id="entityCount">0</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card" style="border-left-color: #17a2b8;">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-hdd-stack fs-2 text-info"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">数据资产</h6>
+                            <h4 class="mb-0" id="assetCount">0</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card" style="border-left-color: #6f42c1;">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-file-text fs-2" style="color: #6f42c1;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">知识文档</h6>
+                            <h4 class="mb-0" id="docCount">0</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 功能模块 -->
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card module-card h-100">
+                    <div class="feature-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-grid-3x3-gap"></i>
+                    </div>
+                    <h5>数据管理模块</h5>
+                    <p class="text-muted">管理概念、实体和数据资产，支持增删改查和分类浏览。</p>
+                    <a href="/concepts" class="btn btn-primary mt-auto">
+                        <i class="bi bi-arrow-right"></i> 进入管理
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card module-card h-100">
+                    <div class="feature-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-bar-chart-line"></i>
+                    </div>
+                    <h5>数据可视化</h5>
+                    <p class="text-muted">提供丰富的数据图表展示，包括饼图、柱状图、折线图等多种类型。</p>
+                    <a href="/charts" class="btn btn-success mt-auto">
+                        <i class="bi bi-arrow-right"></i> 查看图表
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card module-card h-100">
+                    <div class="feature-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-chat-dots"></i>
+                    </div>
+                    <h5>智能问答</h5>
+                    <p class="text-muted">基于本地知识库的AI问答系统，支持文档上传和智能检索。</p>
+                    <a href="/knowledge-base" class="btn btn-info mt-auto text-white">
+                        <i class="bi bi-arrow-right"></i> 开始问答
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mt-2">
+            <div class="col-md-4 offset-md-4">
+                <div class="card module-card h-100">
+                    <div class="feature-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <h5>知识图谱</h5>
+                    <p class="text-muted">基于知识库自动生成知识图谱，可视化展示概念之间的关系。</p>
+                    <a href="/knowledge-graph" class="btn btn-warning mt-auto text-white">
+                        <i class="bi bi-arrow-right"></i> 探索图谱
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-5 py-4 text-center text-muted">
+        <div class="container">
+            <p>&copy; 2026 AI数据资产平台. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 加载统计数据
+        async function loadStats() {
+            try {
+                const [concepts, entities, assets] = await Promise.all([
+                    fetch('/concepts/api/all').then(r => r.json()),
+                    fetch('/entities/api/all').then(r => r.json()),
+                    fetch('/data-assets/api/all').then(r => r.json())
+                ]);
+                
+                document.getElementById('conceptCount').textContent = concepts.data?.length || 0;
+                document.getElementById('entityCount').textContent = entities.data?.length || 0;
+                document.getElementById('assetCount').textContent = assets.data?.length || 0;
+                
+                const docs = await fetch('/knowledge-base/api/documents').then(r => r.json());
+                document.getElementById('docCount').textContent = docs.data?.length || 0;
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
+</body>
+</html>

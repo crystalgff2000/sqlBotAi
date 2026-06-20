@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">知识库问答</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar { background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); }
+        .content-wrapper { margin-top: 2rem; }
+        .chat-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            height: 500px;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .message {
+            max-width: 80%;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+        }
+        .message.user {
+            background: #4a6fa5;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .message.bot {
+            background: #f1f3f4;
+            color: #333;
+        }
+        .doc-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #4a6fa5;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="bi bi-cpu"></i> AI数据资产平台</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/concepts">概念</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/entities">实体</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/data-assets">数据资产</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/charts">图表</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/knowledge-base">知识库</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/knowledge-graph">知识图谱</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container content-wrapper">
+        <h2 class="mb-4"><i class="bi bi-chat-dots text-info"></i> 知识库问答</h2>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="chat-container" id="chatContainer">
+                    <div class="message bot">
+                        <i class="bi bi-robot"></i> 你好！我是AI数据资产平台助手。我已加载相关文档，请提出你的问题。
+                    </div>
+                </div>
+                <div class="input-group mt-3">
+                    <input type="text" class="form-control" id="questionInput" 
+                           placeholder="输入你的问题..." onkeypress="handleKeyPress(event)">
+                    <button class="btn btn-info text-white" onclick="sendQuestion()">
+                        <i class="bi bi-send"></i> 发送
+                    </button>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="doc-card">
+                    <h5><i class="bi bi-upload"></i> 上传文档</h5>
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <i class="bi bi-cloud-upload fs-2 text-muted"></i>
+                        <p class="text-muted mt-2">点击或拖拽上传文档</p>
+                        <small class="text-muted">支持 PDF, Word, TXT</small>
+                    </div>
+                    <input type="file" id="fileInput" style="display: none" 
+                           accept=".pdf,.doc,.docx,.txt" onchange="uploadFile(this)">
+                </div>
+                
+                <div class="doc-card">
+                    <h5><i class="bi bi-folder"></i> 知识文档</h5>
+                    <ul class="list-group list-group-flush" id="docList">
+                        <li class="list-group-item text-center text-muted">加载中...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function loadDocuments() {
+            const response = await fetch('/knowledge-base/api/documents');
+            const result = await response.json();
+            
+            const docList = document.getElementById('docList');
+            if (result.data && result.data.length > 0) {
+                docList.innerHTML = result.data.map(d => `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="bi bi-file-earmark-text"></i> ${d.title}
+                            <br><small class="text-muted">${d.category}</small>
+                        </span>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteDoc(${d.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </li>
+                `).join('');
+            } else {
+                docList.innerHTML = '<li class="list-group-item text-center text-muted">暂无文档</li>';
+            }
+        }
+
+        async function uploadFile(input) {
+            if (!input.files.length) return;
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            formData.append('category', '一般文档');
+            
+            const response = await fetch('/knowledge-base/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                alert('上传成功！');
+                input.value = '';
+                loadDocuments();
+            } else {
+                alert('上传失败');
+            }
+        }
+
+        async function deleteDoc(id) {
+            if (!confirm('确定要删除这个文档吗？')) return;
+            await fetch(`/knowledge-base/api/documents/${id}`, { method: 'DELETE' });
+            loadDocuments();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendQuestion();
+            }
+        }
+
+        async function sendQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+            if (!question) return;
+            
+            const chatContainer = document.getElementById('chatContainer');
+            
+            // 添加用户消息
+            chatContainer.innerHTML += `
+                <div class="message user">
+                    ${question}
+                </div>
+            `;
+            input.value = '';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // 显示加载中
+            const loadingId = 'loading-' + Date.now();
+            chatContainer.innerHTML += `
+                <div class="message bot" id="${loadingId}">
+                    <i class="bi bi-hourglass-split"></i> 思考中...
+                </div>
+            `;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // 发送请求
+            const response = await fetch('/knowledge-base/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question })
+            });
+            
+            const result = await response.json();
+            
+            // 替换加载消息
+            document.getElementById(loadingId).outerHTML = `
+                <div class="message bot">
+                    <i class="bi bi-robot"></i> ${result.data.replace(/\n/g, '<br>')}
+                </div>
+            `;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDocuments);
+    </script>
+</body>
+</html>
