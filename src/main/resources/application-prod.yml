@@ -1,0 +1,33 @@
+server:
+  port: 8080
+  address: 127.0.0.1
+
+spring:
+  datasource:
+    url: jdbc:h2:file:/opt/sqlbotai/data/sqldb;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ${DB_PASSWORD:}
+
+  h2:
+    console:
+      enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  thymeleaf:
+    cache: true
+
+logging:
+  level:
+    com.sqlbot: INFO
+    org.springframework.web: WARN
+  file:
+    name: /opt/sqlbotai/logs/sqlbotai.log
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 30

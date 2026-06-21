@@ -1,0 +1,17 @@
+[Unit]
+Description=SQLBot AI Data Asset Platform
+After=network.target
+
+[Service]
+Type=simple
+User=sqlbotai
+Group=sqlbotai
+WorkingDirectory=/opt/sqlbotai/app
+EnvironmentFile=-/opt/sqlbotai/config/env
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -Dfile.encoding=UTF-8 -jar /opt/sqlbotai/app/sqlBotAi.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
