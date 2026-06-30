@@ -1,21 +1,16 @@
 package com.sqlbot.service.rag;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.sqlbot.config.DashScopeProperties;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -26,21 +21,21 @@ public class DashScopeEmbeddingService implements EmbeddingService {
     private static final int MAX_INPUT_CHARS = 2048;
 
     private final DashScopeProperties properties;
-    private final Gson gson = new Gson();
-    private final HttpClient httpClient;
+    private final EmbeddingModel embeddingModel;
 
-    public DashScopeEmbeddingService(DashScopeProperties properties) {
+    public DashScopeEmbeddingService(
+            DashScopeProperties properties,
+            @Autowired(required = false) EmbeddingModel embeddingModel) {
         this.properties = properties;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(properties.getConnectTimeoutSeconds()))
-                .build();
+        this.embeddingModel = embeddingModel;
     }
 
     @Override
     public boolean isAvailable() {
         return properties.isEnabled()
                 && properties.getApiKey() != null
-                && !properties.getApiKey().isBlank();
+                && !properties.getApiKey().isBlank()
+                && embeddingModel != null;
     }
 
     @Override
@@ -57,84 +52,38 @@ public class DashScopeEmbeddingService implements EmbeddingService {
         if (texts == null || texts.isEmpty()) {
             return List.of();
         }
-        if (!isAvailable()) {
-            throw new IllegalStateException("DashScope Embedding 未启用或未配置 API Key");
-        }
+        ensureAvailable();
 
         List<float[]> results = new ArrayList<>(texts.size());
         int batchSize = Math.max(1, properties.getBatchSize());
 
         for (int i = 0; i < texts.size(); i += batchSize) {
             List<String> batch = texts.subList(i, Math.min(i + batchSize, texts.size()));
-            results.addAll(callEmbeddingApi(batch, textType));
+            results.addAll(callEmbeddingApi(batch));
         }
         return results;
     }
 
-    private List<float[]> callEmbeddingApi(List<String> texts, TextType textType) {
-        String url = properties.getBaseUrl().replaceAll("/$", "")
-                + "/api/v1/services/embeddings/text-embedding/text-embedding";
-
-        JsonArray textsArray = new JsonArray();
-        for (String text : texts) {
-            textsArray.add(truncate(text));
-        }
-
-        JsonObject input = new JsonObject();
-        input.add("texts", textsArray);
-
-        JsonObject parameters = new JsonObject();
-        parameters.addProperty("text_type", textType == TextType.QUERY ? "query" : "document");
-
-        JsonObject body = new JsonObject();
-        body.addProperty("model", properties.getEmbeddingModel());
-        body.add("input", input);
-        body.add("parameters", parameters);
+    private List<float[]> callEmbeddingApi(List<String> texts) {
+        List<TextSegment> segments = texts.stream()
+                .map(this::truncate)
+                .map(TextSegment::from)
+                .toList();
 
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(properties.getReadTimeoutSeconds()))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + properties.getApiKey())
-                    .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            String responseBody = response.body();
-
-            if (response.statusCode() != 200) {
-                log.error("DashScope Embedding error: status={}, body={}", response.statusCode(), responseBody);
-                throw new RuntimeException("DashScope Embedding 调用失败 (HTTP " + response.statusCode() + ")");
+            Response<List<Embedding>> response = embeddingModel.embedAll(segments);
+            List<Embedding> embeddings = response.content();
+            if (embeddings == null || embeddings.isEmpty()) {
+                throw new RuntimeException("DashScope Embedding 返回空向量");
+            }
+            if (embeddings.size() != texts.size()) {
+                throw new RuntimeException("Embedding 数量与输入数量不一致: "
+                        + embeddings.size() + " vs " + texts.size());
             }
 
-            JsonObject json = gson.fromJson(responseBody, JsonObject.class);
-            if (json.has("code")) {
-                String code = json.get("code").getAsString();
-                if (code != null && !code.isBlank() && !"Success".equalsIgnoreCase(code)) {
-                    String message = json.has("message") ? json.get("message").getAsString() : responseBody;
-                    throw new RuntimeException("DashScope Embedding 错误: " + message);
-                }
-            }
-
-            JsonObject output = json.getAsJsonObject("output");
-            if (output == null || !output.has("embeddings")) {
-                throw new RuntimeException("DashScope Embedding 返回格式异常");
-            }
-
-            JsonArray embeddings = output.getAsJsonArray("embeddings");
-            List<IndexedEmbedding> indexed = new ArrayList<>();
-            for (JsonElement element : embeddings) {
-                JsonObject item = element.getAsJsonObject();
-                int textIndex = item.get("text_index").getAsInt();
-                float[] vector = toFloatArray(item.getAsJsonArray("embedding"));
-                indexed.add(new IndexedEmbedding(textIndex, vector));
-            }
-
-            indexed.sort(Comparator.comparingInt(IndexedEmbedding::textIndex));
-            List<float[]> vectors = new ArrayList<>(indexed.size());
-            for (IndexedEmbedding item : indexed) {
-                vectors.add(normalize(item.vector()));
+            List<float[]> vectors = new ArrayList<>(embeddings.size());
+            for (Embedding embedding : embeddings) {
+                vectors.add(normalize(embedding.vector()));
             }
             return vectors;
         } catch (RuntimeException e) {
@@ -145,12 +94,10 @@ public class DashScopeEmbeddingService implements EmbeddingService {
         }
     }
 
-    private float[] toFloatArray(JsonArray array) {
-        float[] vector = new float[array.size()];
-        for (int i = 0; i < array.size(); i++) {
-            vector[i] = array.get(i).getAsFloat();
+    private void ensureAvailable() {
+        if (!isAvailable()) {
+            throw new IllegalStateException("DashScope Embedding 未启用或未配置 API Key");
         }
-        return vector;
     }
 
     static float[] normalize(float[] vector) {
@@ -178,6 +125,4 @@ public class DashScopeEmbeddingService implements EmbeddingService {
         }
         return text.substring(0, MAX_INPUT_CHARS);
     }
-
-    private record IndexedEmbedding(int textIndex, float[] vector) {}
 }

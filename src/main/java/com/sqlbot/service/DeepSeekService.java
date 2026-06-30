@@ -1,18 +1,15 @@
 package com.sqlbot.service;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.sqlbot.config.DeepSeekProperties;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 
 @Service
 public class DeepSeekService {
@@ -20,14 +17,11 @@ public class DeepSeekService {
     private static final Logger log = LoggerFactory.getLogger(DeepSeekService.class);
 
     private final DeepSeekProperties properties;
-    private final Gson gson = new Gson();
-    private final HttpClient httpClient;
+    private final ChatModel chatModel;
 
-    public DeepSeekService(DeepSeekProperties properties) {
+    public DeepSeekService(DeepSeekProperties properties, @Autowired(required = false) ChatModel chatModel) {
         this.properties = properties;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(properties.getConnectTimeoutSeconds()))
-                .build();
+        this.chatModel = chatModel;
     }
 
     public String chat(String question) {
@@ -70,70 +64,39 @@ public class DeepSeekService {
     }
 
     private String chatInternal(String systemPrompt, String userPrompt, double temperature) {
-
-        if (!properties.isEnabled()) {
-            throw new IllegalStateException("DeepSeek API 未启用，请在配置中设置 deepseek.enabled=true");
-        }
-        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
-            throw new IllegalStateException("未配置 DeepSeek API Key，请设置环境变量 DEEPSEEK_API_KEY 或 application.yml 中的 deepseek.api-key");
-        }
-
-        String url = properties.getBaseUrl().replaceAll("/$", "") + "/v1/chat/completions";
-
-        JsonObject systemMessage = new JsonObject();
-        systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", systemPrompt);
-
-        JsonObject userMessage = new JsonObject();
-        userMessage.addProperty("role", "user");
-        userMessage.addProperty("content", userPrompt);
-
-        JsonArray messages = new JsonArray();
-        messages.add(systemMessage);
-        messages.add(userMessage);
-
-        JsonObject body = new JsonObject();
-        body.addProperty("model", properties.getModel());
-        body.add("messages", messages);
-        body.addProperty("stream", false);
-        body.addProperty("temperature", temperature);
+        ensureAvailable();
 
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(properties.getReadTimeoutSeconds()))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + properties.getApiKey())
-                    .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+            ChatRequest request = ChatRequest.builder()
+                    .messages(
+                            SystemMessage.from(systemPrompt),
+                            UserMessage.from(userPrompt)
+                    )
+                    .temperature(temperature)
                     .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            String responseBody = response.body();
-
-            if (response.statusCode() != 200) {
-                log.error("DeepSeek API error: status={}, body={}", response.statusCode(), responseBody);
-                throw new RuntimeException("DeepSeek API 调用失败 (HTTP " + response.statusCode() + ")");
-            }
-
-            JsonObject json = gson.fromJson(responseBody, JsonObject.class);
-            if (json.has("error")) {
-                String msg = json.getAsJsonObject("error").get("message").getAsString();
-                throw new RuntimeException("DeepSeek API 错误: " + msg);
-            }
-
-            JsonArray choices = json.getAsJsonArray("choices");
-            if (choices == null || choices.isEmpty()) {
+            ChatResponse response = chatModel.chat(request);
+            if (response == null || response.aiMessage() == null) {
                 throw new RuntimeException("DeepSeek API 返回空结果");
             }
-
-            return choices.get(0).getAsJsonObject()
-                    .getAsJsonObject("message")
-                    .get("content").getAsString();
+            return response.aiMessage().text();
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
             log.error("DeepSeek API call failed", e);
             throw new RuntimeException("DeepSeek API 调用异常: " + e.getMessage(), e);
+        }
+    }
+
+    private void ensureAvailable() {
+        if (!properties.isEnabled()) {
+            throw new IllegalStateException("DeepSeek API 未启用，请在配置中设置 deepseek.enabled=true");
+        }
+        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
+            throw new IllegalStateException(
+                    "未配置 DeepSeek API Key，请设置环境变量 DEEPSEEK_API_KEY 或 application.yml 中的 deepseek.api-key");
+        }
+        if (chatModel == null) {
+            throw new IllegalStateException("LangChain4j DeepSeek ChatModel 未初始化，请检查 deepseek 配置");
         }
     }
 }
