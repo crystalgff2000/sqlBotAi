@@ -8,7 +8,7 @@ User=sqlbotai
 Group=sqlbotai
 WorkingDirectory=/opt/sqlbotai/app
 EnvironmentFile=-/opt/sqlbotai/config/env
-ExecStart=/usr/bin/java -Xms256m -Xmx512m -Dfile.encoding=UTF-8 -jar /opt/sqlbotai/app/sqlBotAi.jar --spring.profiles.active=prod
+ExecStart=/usr/bin/java -Xms256m -Xmx768m -Dfile.encoding=UTF-8 -cp /opt/sqlbotai/app/exploded/BOOT-INF/classes:/opt/sqlbotai/app/exploded/BOOT-INF/lib/* com.sqlbot.SqlBotAiApplication --spring.profiles.active=prod
 SuccessExitStatus=143
 Restart=on-failure
 RestartSec=10

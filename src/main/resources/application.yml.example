@@ -1,0 +1,82 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: AI数据资产平台
+
+  datasource:
+    url: jdbc:h2:mem:sqldb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  thymeleaf:
+    cache: false
+    mode: HTML
+    prefix: classpath:/templates/
+    suffix: .html
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+logging:
+  level:
+    com.sqlbot: DEBUG
+    org.springframework.web: INFO
+
+# DeepSeek API（知识库问答回退）
+# 复制本文件为 application.yml 后填写，或通过环境变量 DEEPSEEK_API_KEY 注入
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:}
+  base-url: https://api.deepseek.com
+  model: deepseek-chat
+  enabled: true
+
+# 本地 Wiki 知识库检索
+wiki:
+  search-pattern: classpath:wiki/**/*.md
+  min-match-score: 3
+  max-results: 3
+  max-snippet-length: 500
+  max-answer-length: 6000
+
+# DashScope Embedding（本地 RAG 向量检索）
+# 复制本文件为 application.yml 后填写，或通过环境变量 DASHSCOPE_API_KEY 注入
+dashscope:
+  api-key: ${DASHSCOPE_API_KEY:}
+  base-url: https://dashscope.aliyuncs.com
+  embedding-model: text-embedding-v2
+  enabled: true
+  batch-size: 25
+
+# 本地 RAG（DashScope Embedding + 关键词混合检索 + DeepSeek 生成）
+rag:
+  enabled: true
+  vector-store: dashscope
+  chunk-size: 600
+  chunk-overlap: 80
+  top-k: 5
+  min-score: 0.45
+  high-confidence-score: 0.55
+  tfidf-min-score: 0.08
+  tfidf-high-confidence-score: 0.18
+  rebuild-on-startup: true
+  max-context-length: 4000
+  cache-dir: data/rag-cache

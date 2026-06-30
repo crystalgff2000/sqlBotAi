@@ -60,14 +60,24 @@ APP_HOME="$APP_HOME"
 if [[ ! -f /etc/systemd/system/sqlbotai.service ]]; then
     chmod +x /tmp/install-server.sh
     APP_HOME="\$APP_HOME" bash /tmp/install-server.sh
+else
+    cp /tmp/sqlbotai.service /etc/systemd/system/sqlbotai.service
+    cp /tmp/nginx-sqlbotai.conf /etc/nginx/conf.d/sqlbotai.conf
+    systemctl daemon-reload
+    nginx -t && systemctl restart nginx
 fi
 
 mkdir -p "\$APP_HOME"/{app,data,logs,config}
 cp /tmp/sqlBotAi.jar "\$APP_HOME/app/sqlBotAi.jar"
+rm -rf "\$APP_HOME/app/exploded"
+mkdir -p "\$APP_HOME/app/exploded"
+unzip -q -o "\$APP_HOME/app/sqlBotAi.jar" -d "\$APP_HOME/app/exploded"
 chown -R sqlbotai:sqlbotai "\$APP_HOME"
 
 cat > "\$APP_HOME/config/env" <<ENV
 DB_PASSWORD=${DB_PASSWORD:-}
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
 ENV
 chmod 600 "\$APP_HOME/config/env"
 chown sqlbotai:sqlbotai "\$APP_HOME/config/env"

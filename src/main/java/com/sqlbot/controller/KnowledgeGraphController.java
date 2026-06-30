@@ -8,6 +8,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @Controller
 @RequestMapping("/knowledge-graph")
 public class KnowledgeGraphController {
@@ -25,6 +28,24 @@ public class KnowledgeGraphController {
     @ResponseBody
     public ResponseResult<GraphDataDTO> getFullGraph() {
         return ResponseResult.success(knowledgeGraphService.getFullGraph());
+    }
+
+    @PostMapping("/api/rebuild")
+    @ResponseBody
+    public ResponseResult<GraphDataDTO> rebuildFromWiki() {
+        return ResponseResult.success("已从 Wiki 重建知识图谱", knowledgeGraphService.rebuildFromWiki());
+    }
+
+    @GetMapping("/api/wiki-pages")
+    @ResponseBody
+    public ResponseResult<List<Map<String, String>>> listWikiPages() {
+        return ResponseResult.success(knowledgeGraphService.listWikiPages());
+    }
+
+    @GetMapping("/api/graph/wiki")
+    @ResponseBody
+    public ResponseResult<GraphDataDTO> getWikiSubgraph(@RequestParam String path) {
+        return ResponseResult.success(knowledgeGraphService.getWikiSubgraph(path));
     }
 
     @GetMapping("/api/graph/{docId}")

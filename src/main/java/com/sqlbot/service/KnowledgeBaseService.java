@@ -1,7 +1,12 @@
 package com.sqlbot.service;
 
+import com.sqlbot.config.RagProperties;
+import com.sqlbot.dto.ChatAnswerDTO;
 import com.sqlbot.entity.KnowledgeDocument;
 import com.sqlbot.repository.KnowledgeDocumentRepository;
+import com.sqlbot.service.rag.LocalRagService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,9 +24,23 @@ import java.util.UUID;
 
 @Service
 public class KnowledgeBaseService {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(KnowledgeBaseService.class);
+
     @Autowired
     private KnowledgeDocumentRepository documentRepository;
+
+    @Autowired
+    private RagProperties ragProperties;
+
+    @Autowired
+    private LocalRagService localRagService;
+
+    @Autowired
+    private WikiSearchService wikiSearchService;
+
+    @Autowired
+    private DeepSeekService deepSeekService;
     
     private final String UPLOAD_DIR = "src/main/resources/knowledge-base/";
     
@@ -75,29 +94,65 @@ public class KnowledgeBaseService {
         return content.toString();
     }
     
-    public String answerQuestion(String question) {
-        List<KnowledgeDocument> docs = documentRepository.findAll();
-        if (docs.isEmpty()) {
-            return "\u77e5\u8bc6\u5e93\u6682\u65e0\u6587\u6863\uff0c\u8bf7\u5148\u4e0a\u4f20\u6587\u6863\u3002";
+    public ChatAnswerDTO answerQuestion(String question) {
+        if (question == null || question.isBlank()) {
+            return new ChatAnswerDTO("请输入有效的问题。", "error", new String[0]);
         }
-        
-        StringBuilder response = new StringBuilder();
-        response.append("\u57fa\u4e8e\u77e5\u8bc6\u5e93\u7684\u56de\u7b54:\n\n");
-        response.append("\u95ee\u9898: ").append(question).append("\n\n");
-        
-        response.append("\u6839\u636e\u77e5\u8bc6\u5e93\u4e2d\u7684 ").append(docs.size()).append(" \u4efd\u6587\u6863\uff0c\u627e\u5230\u4ee5\u4e0b\u76f8\u5173\u4fe1\u606f:\n");
-        
-        int count = 0;
-        for (KnowledgeDocument doc : docs) {
-            if (count >= 3) break;
-            response.append("- \u6587\u6863\u300a").append(doc.getTitle()).append("\u300b");
-            response.append(" (\u5206\u7c7b: ").append(doc.getCategory()).append(")\n");
-            count++;
+
+        String trimmedQuestion = question.trim();
+
+        if (ragProperties.isEnabled()) {
+            try {
+                LocalRagService.RagAnswer ragAnswer = localRagService.answer(trimmedQuestion);
+                return new ChatAnswerDTO(ragAnswer.answer(), ragAnswer.source(), ragAnswer.references());
+            } catch (Exception e) {
+                log.error("Local RAG failed", e);
+                return new ChatAnswerDTO("RAG 问答失败：" + e.getMessage(), "error", new String[0]);
+            }
         }
-        
-        response.append("\n\u5efa\u8bae\u67e5\u770b\u76f8\u5173\u6587\u6863\u83b7\u53d6\u8be6\u7ec6\u4fe1\u606f\u3002");
-        
-        return response.toString();
+
+        List<WikiSearchResult> wikiResults = wikiSearchService.search(trimmedQuestion);
+        if (wikiSearchService.hasMatch(wikiResults)) {
+            String answer = wikiSearchService.buildAnswer(trimmedQuestion, wikiResults);
+            String[] references = wikiResults.stream()
+                    .map(r -> "wiki/" + r.getRelativePath())
+                    .toArray(String[]::new);
+            return new ChatAnswerDTO(answer, "wiki", references);
+        }
+
+        log.info("No wiki match for question, falling back to DeepSeek: {}", trimmedQuestion);
+        try {
+            String answer = deepSeekService.chat(trimmedQuestion);
+            return new ChatAnswerDTO(answer, "deepseek", new String[0]);
+        } catch (Exception e) {
+            log.error("DeepSeek fallback failed", e);
+            return new ChatAnswerDTO(
+                    "本地 Wiki 未找到相关内容，且 DeepSeek 调用失败：" + e.getMessage()
+                            + "\n\n请检查 deepseek.api-key 配置，或尝试换一种问法。",
+                    "error",
+                    new String[0]
+            );
+        }
+    }
+
+    public int rebuildRagIndex() {
+        return localRagService.rebuildIndex();
+    }
+
+    public int getRagChunkCount() {
+        return localRagService.getChunkCount();
+    }
+
+    public boolean isRagEnabled() {
+        return ragProperties.isEnabled();
+    }
+
+    public String getRagVectorStoreType() {
+        return localRagService.getVectorStoreType();
+    }
+
+    public boolean isRagEmbeddingReady() {
+        return localRagService.isEmbeddingReady();
     }
     
     private String getFileExtension(String filename) {

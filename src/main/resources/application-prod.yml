@@ -31,3 +31,17 @@ logging:
     rollingpolicy:
       max-file-size: 50MB
       max-history: 30
+
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:}
+  enabled: true
+
+dashscope:
+  api-key: ${DASHSCOPE_API_KEY:}
+  enabled: true
+
+rag:
+  enabled: true
+  vector-store: dashscope
+  rebuild-on-startup: true
+  cache-dir: /opt/sqlbotai/data/rag-cache

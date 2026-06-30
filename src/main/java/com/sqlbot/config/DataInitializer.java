@@ -18,18 +18,12 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private DataAssetRepository dataAssetRepository;
 
-    @Autowired
-    private KnowledgeGraphNodeRepository nodeRepository;
-
-    @Autowired
-    private KnowledgeGraphEdgeRepository edgeRepository;
-
     @Override
     public void run(String... args) {
         initConcepts();
         initEntities();
         initDataAssets();
-        initKnowledgeGraph();
+        // 知识图谱由 WikiKnowledgeGraphService 在启动时从 Wiki 自动生成
     }
 
     private void initConcepts() {
@@ -172,46 +166,6 @@ public class DataInitializer implements CommandLineRunner {
             dataAssetRepository.save(a5);
 
             System.out.println("\u521d\u59cb\u5316\u6570\u636e\u8d44\u4ea7: " + dataAssetRepository.count() + " \u6761");
-        }
-    }
-
-    private void initKnowledgeGraph() {
-        if (nodeRepository.count() == 0) {
-            // \u521b\u5efa\u793a\u4f8b\u8282\u70b9
-            String[] nodeNames = {"\u6570\u636e\u5e93", "\u6570\u636e\u8868", "\u5b57\u6bb5", "\u7d22\u5f15", "\u5173\u7cfb", "\u89c6\u56fe", "\u5b58\u50a8\u8fc7\u7a0b"};
-            String[] categories = {"\u7cfb\u7edf", "\u5bf9\u8c61", "\u5c5e\u6027", "\u7ed3\u6784", "\u5173\u8054", "\u5bf9\u8c61", "\u903b\u8f91"};
-
-            for (int i = 0; i < nodeNames.length; i++) {
-                KnowledgeGraphNode node = new KnowledgeGraphNode();
-                node.setNodeId("node_" + i);
-                node.setName(nodeNames[i]);
-                node.setType("\u57fa\u7840");
-                node.setCategory(categories[i]);
-                node.setProperties("{}");
-                nodeRepository.save(node);
-            }
-
-            // \u521b\u5efa\u793a\u4f8b\u5173\u7cfb
-            String[][] relations = {
-                {"node_0", "node_1", "\u5305\u542b"},
-                {"node_1", "node_2", "\u62e5\u6709"},
-                {"node_1", "node_3", "\u4f7f\u7528"},
-                {"node_1", "node_4", "\u5173\u8054"},
-                {"node_0", "node_5", "\u652f\u6301"},
-                {"node_0", "node_6", "\u6267\u884c"}
-            };
-
-            for (String[] rel : relations) {
-                KnowledgeGraphEdge edge = new KnowledgeGraphEdge();
-                edge.setSourceNodeId(rel[0]);
-                edge.setTargetNodeId(rel[1]);
-                edge.setRelation(rel[2]);
-                edge.setWeight(1.0);
-                edge.setProperties("{}");
-                edgeRepository.save(edge);
-            }
-
-            System.out.println("\u521d\u59cb\u5316\u77e5\u8bc6\u56fe\u8c31: " + nodeRepository.count() + " \u8282\u70b9, " + edgeRepository.count() + " \u5173\u7cfb");
         }
     }
 }

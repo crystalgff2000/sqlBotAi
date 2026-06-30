@@ -21,7 +21,21 @@ public class KnowledgeGraphService {
     private KnowledgeGraphEdgeRepository edgeRepository;
     
     @Autowired
+    private WikiKnowledgeGraphService wikiKnowledgeGraphService;
+
+    @Autowired
     private KnowledgeBaseService knowledgeBaseService;
+
+    private static final Map<String, String> CATEGORY_COLORS = Map.of(
+            "概念", "#91cc75",
+            "实体", "#fac858",
+            "数据资产", "#5470c6",
+            "指标", "#73c0de",
+            "来源", "#ee6666",
+            "参考", "#3ba272",
+            "域定义", "#9a60b4",
+            "文档", "#b6a2de"
+    );
     
     public GraphDataDTO generateGraphFromDocument(Long docId) {
         KnowledgeDocument doc = knowledgeBaseService.findById(docId);
@@ -107,7 +121,11 @@ public class KnowledgeGraphService {
             node.setId(n.getNodeId());
             node.setName(n.getName());
             node.setCategory(n.getCategory());
-            node.setSymbolSize(30);
+            node.setSymbolSize(resolveSymbolSize(n.getCategory()));
+
+            Map<String, Object> style = new HashMap<>();
+            style.put("color", CATEGORY_COLORS.getOrDefault(n.getCategory(), "#b6a2de"));
+            node.setItemStyle(style);
             nodes.add(node);
         }
         
@@ -119,9 +137,9 @@ public class KnowledgeGraphService {
             edges.add(edge);
         }
         
-        // \u5982\u679c\u6ca1\u6709\u6570\u636e\uff0c\u8fd4\u56de\u793a\u4f8b\u56fe
+        // 如果没有数据，从 Wiki 重建
         if (nodes.isEmpty()) {
-            return generateSampleGraph();
+            return wikiKnowledgeGraphService.rebuildFromWiki();
         }
         
         graph.setNodes(nodes);
@@ -173,6 +191,31 @@ public class KnowledgeGraphService {
         return graph;
     }
     
+    public GraphDataDTO rebuildFromWiki() {
+        return wikiKnowledgeGraphService.rebuildFromWiki();
+    }
+
+    public GraphDataDTO getWikiSubgraph(String relativePath) {
+        return wikiKnowledgeGraphService.getSubgraph(relativePath);
+    }
+
+    public List<Map<String, String>> listWikiPages() {
+        return wikiKnowledgeGraphService.listWikiPages();
+    }
+
+    private int resolveSymbolSize(String category) {
+        return switch (category) {
+            case "概念" -> 35;
+            case "实体" -> 40;
+            case "数据资产" -> 30;
+            case "指标" -> 32;
+            case "来源" -> 28;
+            case "参考" -> 30;
+            case "域定义" -> 26;
+            default -> 28;
+        };
+    }
+
     public void saveNode(KnowledgeGraphNode node) {
         nodeRepository.save(node);
     }

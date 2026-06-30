@@ -23,18 +23,29 @@ out/
 # OS
 .DS_Store
 Thumbs.db
+._*
 
 # Logs
 *.log
 logs/
 
-# Local config / secrets
+# Wiki 知识库（整目录敏感数据，不入库）
+src/main/resources/wiki/
+
+# 本地配置与 API Key（禁止提交真实密钥）
 .env
 .env.*
+!.env.example
 *.local
 application-local.yml
 application-local.properties
+src/main/resources/application.yml
 deploy/deploy.env
+deploy/config/
+**/config/env
+
+# RAG embedding cache
+data/rag-cache/
 
 # Java
 *.class

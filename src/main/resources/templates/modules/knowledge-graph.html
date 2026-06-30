@@ -56,12 +56,15 @@
         <div class="row">
             <div class="col-md-3">
                 <div class="doc-selector mb-3">
-                    <h6 class="mb-3">选择知识源</h6>
-                    <select class="form-select" id="docSelect" onchange="loadGraphForDoc()">
-                        <option value="">完整知识图谱</option>
+                    <h6 class="mb-3">Wiki 知识源</h6>
+                    <select class="form-select mb-2" id="wikiSelect" onchange="loadWikiSubgraph()">
+                        <option value="">完整 Wiki 图谱</option>
                     </select>
-                    <button class="btn btn-warning text-white w-100 mt-2" onclick="loadFullGraph()">
-                        <i class="bi bi-arrow-clockwise"></i> 刷新图谱
+                    <button class="btn btn-warning text-white w-100 mb-2" onclick="rebuildFromWiki()">
+                        <i class="bi bi-diagram-3"></i> 从 Wiki 重建图谱
+                    </button>
+                    <button class="btn btn-outline-secondary w-100" onclick="loadFullGraph()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新显示
                     </button>
                 </div>
                 
@@ -82,10 +85,6 @@
                 <div class="doc-selector mt-3">
                     <h6 class="mb-2">图例</h6>
                     <div class="d-flex align-items-center mb-2">
-                        <span class="badge rounded-pill me-2" style="background:#5470c6; width:20px; height:20px;"></span>
-                        <small>文档</small>
-                    </div>
-                    <div class="d-flex align-items-center mb-2">
                         <span class="badge rounded-pill me-2" style="background:#91cc75; width:20px; height:20px;"></span>
                         <small>概念</small>
                     </div>
@@ -93,9 +92,21 @@
                         <span class="badge rounded-pill me-2" style="background:#fac858; width:20px; height:20px;"></span>
                         <small>实体</small>
                     </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge rounded-pill me-2" style="background:#5470c6; width:20px; height:20px;"></span>
+                        <small>数据资产</small>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge rounded-pill me-2" style="background:#73c0de; width:20px; height:20px;"></span>
+                        <small>指标</small>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge rounded-pill me-2" style="background:#ee6666; width:20px; height:20px;"></span>
+                        <small>来源</small>
+                    </div>
                     <div class="d-flex align-items-center">
                         <span class="badge rounded-pill me-2" style="background:#9a60b4; width:20px; height:20px;"></span>
-                        <small>子概念</small>
+                        <small>域定义 / 参考</small>
                     </div>
                 </div>
             </div>
@@ -123,16 +134,42 @@
     <script>
         let graphChart = null;
         
-        async function loadDocuments() {
-            const response = await fetch('/knowledge-base/api/documents');
+        async function loadWikiPages() {
+            const response = await fetch('/knowledge-graph/api/wiki-pages');
             const result = await response.json();
             
-            const select = document.getElementById('docSelect');
+            const select = document.getElementById('wikiSelect');
             if (result.data && result.data.length > 0) {
-                result.data.forEach(d => {
-                    select.innerHTML += `<option value="${d.id}">${d.title}</option>`;
+                result.data.forEach(p => {
+                    select.innerHTML += `<option value="${p.path}">[${p.category}] ${p.title}</option>`;
                 });
             }
+        }
+        
+        async function rebuildFromWiki() {
+            const response = await fetch('/knowledge-graph/api/rebuild', { method: 'POST' });
+            const result = await response.json();
+            if (result.code === 200) {
+                renderGraph(result.data);
+                updateStats(result.data);
+                alert(`Wiki 知识图谱已重建：${result.data.nodes.length} 个节点，${result.data.edges.length} 条关系`);
+            } else {
+                alert('重建失败：' + result.message);
+            }
+        }
+        
+        async function loadWikiSubgraph() {
+            const path = document.getElementById('wikiSelect').value;
+            if (!path) {
+                loadFullGraph();
+                return;
+            }
+            
+            const response = await fetch(`/knowledge-graph/api/graph/wiki?path=${encodeURIComponent(path)}`);
+            const result = await response.json();
+            
+            renderGraph(result.data);
+            updateStats(result.data);
         }
         
         function initGraph() {
@@ -142,20 +179,6 @@
         
         async function loadFullGraph() {
             const response = await fetch('/knowledge-graph/api/graph');
-            const result = await response.json();
-            
-            renderGraph(result.data);
-            updateStats(result.data);
-        }
-        
-        async function loadGraphForDoc() {
-            const docId = document.getElementById('docSelect').value;
-            if (!docId) {
-                loadFullGraph();
-                return;
-            }
-            
-            const response = await fetch(`/knowledge-graph/api/graph/${docId}`);
             const result = await response.json();
             
             renderGraph(result.data);
@@ -196,9 +219,9 @@
                     roam: true,
                     label: { show: true, position: 'right' },
                     force: {
-                        repulsion: 300,
-                        edgeLength: 150,
-                        gravity: 0.1
+                        repulsion: 200,
+                        edgeLength: 80,
+                        gravity: 0.15
                     },
                     emphasis: {
                         focus: 'adjacency',
@@ -238,7 +261,7 @@
         });
         
         document.addEventListener('DOMContentLoaded', () => {
-            loadDocuments();
+            loadWikiPages();
             initGraph();
         });
     </script>

@@ -7,9 +7,9 @@ APP_USER="${APP_USER:-sqlbotai}"
 echo "==> 安装 Java 17..."
 if command -v apt-get &>/dev/null; then
     apt-get update -qq
-    apt-get install -y openjdk-17-jre-headless nginx
+    apt-get install -y openjdk-17-jre-headless nginx unzip
 elif command -v yum &>/dev/null; then
-    yum install -y java-17-openjdk-headless nginx
+    yum install -y java-17-openjdk-headless nginx unzip
 else
     echo "不支持的系统，请手动安装 Java 17 和 Nginx"
     exit 1

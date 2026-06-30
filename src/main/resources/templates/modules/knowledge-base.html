@@ -49,10 +49,17 @@
             cursor: pointer;
             transition: all 0.3s;
         }
-        .upload-area:hover {
-            border-color: #4a6fa5;
-            background: #f8f9fa;
+        .message.bot .source-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
         }
+        .source-badge.wiki { background: #d4edda; color: #155724; }
+        .source-badge.rag { background: #fff3cd; color: #856404; }
+        .source-badge.deepseek { background: #cce5ff; color: #004085; }
+        .source-badge.error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
@@ -80,7 +87,7 @@
             <div class="col-md-8">
                 <div class="chat-container" id="chatContainer">
                     <div class="message bot">
-                        <i class="bi bi-robot"></i> 你好！我是AI数据资产平台助手。我已加载相关文档，请提出你的问题。
+                        <i class="bi bi-robot"></i> 你好！我是 AI 数据资产平台助手。已启用<strong>本地 RAG</strong>（DashScope Embedding）：优先从 Wiki 语义检索并回答；仅当本地无匹配内容时，才调用 DeepSeek。
                     </div>
                 </div>
                 <div class="input-group mt-3">
@@ -93,6 +100,15 @@
             </div>
             
             <div class="col-md-4">
+                <div class="doc-card">
+                    <h5><i class="bi bi-search"></i> 本地 RAG</h5>
+                    <p class="text-muted small mb-2">DashScope Embedding 语义检索 + 关键词混合；Wiki 命中则本地回答</p>
+                    <button class="btn btn-outline-warning w-100 mb-2" onclick="rebuildRagIndex()">
+                        <i class="bi bi-arrow-repeat"></i> 重建 RAG 索引
+                    </button>
+                    <div class="small text-muted" id="ragStats">索引加载中...</div>
+                </div>
+
                 <div class="doc-card">
                     <h5><i class="bi bi-upload"></i> 上传文档</h5>
                     <div class="upload-area" onclick="document.getElementById('fileInput').click()">
@@ -204,17 +220,48 @@
             });
             
             const result = await response.json();
-            
+            const data = result.data || {};
+            const answer = data.answer || result.message || '无响应';
+            const source = data.source || 'unknown';
+            const sourceLabel = source === 'rag' ? '本地 RAG' : source === 'wiki' ? '本地 Wiki' : source === 'deepseek' ? 'DeepSeek' : '系统';
+            const sourceClass = source === 'rag' ? 'rag' : source === 'wiki' ? 'wiki' : source === 'deepseek' ? 'deepseek' : 'error';
+
             // 替换加载消息
             document.getElementById(loadingId).outerHTML = `
                 <div class="message bot">
-                    <i class="bi bi-robot"></i> ${result.data.replace(/\n/g, '<br>')}
+                    <span class="source-badge ${sourceClass}">${sourceLabel}</span>
+                    <i class="bi bi-robot"></i> ${answer.replace(/\n/g, '<br>')}
                 </div>
             `;
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        document.addEventListener('DOMContentLoaded', loadDocuments);
+        async function loadRagStats() {
+            const response = await fetch('/knowledge-base/api/rag/stats');
+            const result = await response.json();
+            if (result.data) {
+                const enabled = result.data.enabled ? '已启用' : '未启用';
+                const store = result.data.vectorStore === 'dashscope' ? 'DashScope Embedding' : 'TF-IDF';
+                document.getElementById('ragStats').textContent =
+                    `${enabled} · ${store} · ${result.data.chunkCount} 个文档片段`;
+            }
+        }
+
+        async function rebuildRagIndex() {
+            const response = await fetch('/knowledge-base/api/rag/rebuild', { method: 'POST' });
+            const result = await response.json();
+            if (result.code === 200) {
+                document.getElementById('ragStats').textContent = `已索引 ${result.data} 个文档片段`;
+                alert(`RAG 索引重建完成，共 ${result.data} 个片段`);
+            } else {
+                alert('重建失败：' + result.message);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDocuments();
+            loadRagStats();
+        });
     </script>
 </body>
 </html>

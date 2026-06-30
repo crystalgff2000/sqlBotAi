@@ -1,5 +1,6 @@
 package com.sqlbot.controller;
 
+import com.sqlbot.dto.ChatAnswerDTO;
 import com.sqlbot.dto.ChatRequestDTO;
 import com.sqlbot.dto.ResponseResult;
 import com.sqlbot.entity.KnowledgeDocument;
@@ -11,7 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/knowledge-base")
@@ -46,10 +49,28 @@ public class KnowledgeBaseController {
         }
     }
 
+    @GetMapping("/api/rag/stats")
+    @ResponseBody
+    public ResponseResult<Map<String, Object>> ragStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("chunkCount", knowledgeBaseService.getRagChunkCount());
+        stats.put("enabled", knowledgeBaseService.isRagEnabled());
+        stats.put("vectorStore", knowledgeBaseService.getRagVectorStoreType());
+        stats.put("embeddingReady", knowledgeBaseService.isRagEmbeddingReady());
+        return ResponseResult.success(stats);
+    }
+
+    @PostMapping("/api/rag/rebuild")
+    @ResponseBody
+    public ResponseResult<Integer> rebuildRagIndex() {
+        int chunkCount = knowledgeBaseService.rebuildRagIndex();
+        return ResponseResult.success("RAG 索引重建完成", chunkCount);
+    }
+
     @PostMapping("/api/chat")
     @ResponseBody
-    public ResponseResult<String> chat(@RequestBody ChatRequestDTO request) {
-        String answer = knowledgeBaseService.answerQuestion(request.getQuestion());
+    public ResponseResult<ChatAnswerDTO> chat(@RequestBody ChatRequestDTO request) {
+        ChatAnswerDTO answer = knowledgeBaseService.answerQuestion(request.getQuestion());
         return ResponseResult.success(answer);
     }
 
