@@ -50,13 +50,8 @@
             background: white;
             padding: 2rem;
             border-radius: 15px;
-        }
-        
-        .stats-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            border-left: 4px solid var(--primary-color);
+            display: flex;
+            flex-direction: column;
         }
         
         .btn-primary {
@@ -86,19 +81,10 @@
                         <a class="nav-link active" href="/">首页</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/concepts">概念</a>
+                        <a class="nav-link" href="/wiki">知识库</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/entities">实体</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/data-assets">数据资产</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/charts">图表</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/knowledge-base">知识库</a>
+                        <a class="nav-link" href="/knowledge-base">知识问答</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/knowledge-graph">知识图谱</a>
@@ -119,77 +105,45 @@
             </div>
         </div>
 
-        <!-- 统计卡片 -->
-        <div class="row mb-5">
-            <div class="col-md-3 mb-3">
-                <div class="stats-card">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-lightbulb fs-2 text-warning"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-1">概念数量</h6>
-                            <h4 class="mb-0" id="conceptCount">0</h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="stats-card" style="border-left-color: #28a745;">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-box fs-2 text-success"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-1">实体数量</h6>
-                            <h4 class="mb-0" id="entityCount">0</h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="stats-card" style="border-left-color: #17a2b8;">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-hdd-stack fs-2 text-info"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-1">数据资产</h6>
-                            <h4 class="mb-0" id="assetCount">0</h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="stats-card" style="border-left-color: #6f42c1;">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-file-text fs-2" style="color: #6f42c1;"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-1">知识文档</h6>
-                            <h4 class="mb-0" id="docCount">0</h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- 功能模块 -->
         <div class="row g-4">
-            <div class="col-md-4">
+            <div class="col-md-6 col-lg-3">
                 <div class="card module-card h-100">
                     <div class="feature-icon bg-primary bg-opacity-10 text-primary">
-                        <i class="bi bi-grid-3x3-gap"></i>
+                        <i class="bi bi-journal-bookmark"></i>
                     </div>
-                    <h5>数据管理模块</h5>
-                    <p class="text-muted">管理概念、实体和数据资产，支持增删改查和分类浏览。</p>
-                    <a href="/concepts" class="btn btn-primary mt-auto">
-                        <i class="bi bi-arrow-right"></i> 进入管理
+                    <h5>知识库管理模块</h5>
+                    <p class="text-muted">浏览 Wiki 知识文档，按模块索引查看概念、实体、数据资产等说明。</p>
+                    <a href="/wiki" class="btn btn-primary mt-auto">
+                        <i class="bi bi-arrow-right"></i> 进入知识库
                     </a>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card module-card h-100">
+                    <div class="feature-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-chat-dots"></i>
+                    </div>
+                    <h5>知识问答模块</h5>
+                    <p class="text-muted">基于本地 Wiki 的 AI 问答，支持 RAG 语义检索与智能回答。</p>
+                    <a href="/knowledge-base" class="btn btn-info mt-auto text-white">
+                        <i class="bi bi-arrow-right"></i> 开始问答
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card module-card h-100">
+                    <div class="feature-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <h5>知识图谱模块</h5>
+                    <p class="text-muted">基于 Wiki 自动生成知识图谱，可视化展示文档之间的引用与血缘关系。</p>
+                    <a href="/knowledge-graph" class="btn btn-warning mt-auto text-white">
+                        <i class="bi bi-arrow-right"></i> 探索图谱
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
                 <div class="card module-card h-100">
                     <div class="feature-icon bg-success bg-opacity-10 text-success">
                         <i class="bi bi-bar-chart-line"></i>
@@ -198,33 +152,6 @@
                     <p class="text-muted">提供丰富的数据图表展示，包括饼图、柱状图、折线图等多种类型。</p>
                     <a href="/charts" class="btn btn-success mt-auto">
                         <i class="bi bi-arrow-right"></i> 查看图表
-                    </a>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card module-card h-100">
-                    <div class="feature-icon bg-info bg-opacity-10 text-info">
-                        <i class="bi bi-chat-dots"></i>
-                    </div>
-                    <h5>智能问答</h5>
-                    <p class="text-muted">基于本地知识库的AI问答系统，支持文档上传和智能检索。</p>
-                    <a href="/knowledge-base" class="btn btn-info mt-auto text-white">
-                        <i class="bi bi-arrow-right"></i> 开始问答
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-4 mt-2">
-            <div class="col-md-4 offset-md-4">
-                <div class="card module-card h-100">
-                    <div class="feature-icon bg-warning bg-opacity-10 text-warning">
-                        <i class="bi bi-diagram-3"></i>
-                    </div>
-                    <h5>知识图谱</h5>
-                    <p class="text-muted">基于知识库自动生成知识图谱，可视化展示概念之间的关系。</p>
-                    <a href="/knowledge-graph" class="btn btn-warning mt-auto text-white">
-                        <i class="bi bi-arrow-right"></i> 探索图谱
                     </a>
                 </div>
             </div>
@@ -238,28 +165,5 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // 加载统计数据
-        async function loadStats() {
-            try {
-                const [concepts, entities, assets] = await Promise.all([
-                    fetch('/concepts/api/all').then(r => r.json()),
-                    fetch('/entities/api/all').then(r => r.json()),
-                    fetch('/data-assets/api/all').then(r => r.json())
-                ]);
-                
-                document.getElementById('conceptCount').textContent = concepts.data?.length || 0;
-                document.getElementById('entityCount').textContent = entities.data?.length || 0;
-                document.getElementById('assetCount').textContent = assets.data?.length || 0;
-                
-                const docs = await fetch('/knowledge-base/api/documents').then(r => r.json());
-                document.getElementById('docCount').textContent = docs.data?.length || 0;
-            } catch (error) {
-                console.error('加载统计失败:', error);
-            }
-        }
-        
-        document.addEventListener('DOMContentLoaded', loadStats);
-    </script>
 </body>
 </html>

@@ -14,6 +14,7 @@ public class GraphDataDTO {
         private String id;
         private String name;
         private String category;
+        private String wikiPath;
         private Integer symbolSize;
         private Map<String, Object> itemStyle;
         private Map<String, Object> label;

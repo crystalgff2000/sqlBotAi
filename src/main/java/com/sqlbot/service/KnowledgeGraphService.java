@@ -109,42 +109,7 @@ public class KnowledgeGraphService {
     }
     
     public GraphDataDTO getFullGraph() {
-        List<KnowledgeGraphNode> allNodes = nodeRepository.findAll();
-        List<KnowledgeGraphEdge> allEdges = edgeRepository.findAll();
-        
-        GraphDataDTO graph = new GraphDataDTO();
-        List<GraphDataDTO.Node> nodes = new ArrayList<>();
-        List<GraphDataDTO.Edge> edges = new ArrayList<>();
-        
-        for (KnowledgeGraphNode n : allNodes) {
-            GraphDataDTO.Node node = new GraphDataDTO.Node();
-            node.setId(n.getNodeId());
-            node.setName(n.getName());
-            node.setCategory(n.getCategory());
-            node.setSymbolSize(resolveSymbolSize(n.getCategory()));
-
-            Map<String, Object> style = new HashMap<>();
-            style.put("color", CATEGORY_COLORS.getOrDefault(n.getCategory(), "#b6a2de"));
-            node.setItemStyle(style);
-            nodes.add(node);
-        }
-        
-        for (KnowledgeGraphEdge e : allEdges) {
-            GraphDataDTO.Edge edge = new GraphDataDTO.Edge();
-            edge.setSource(e.getSourceNodeId());
-            edge.setTarget(e.getTargetNodeId());
-            edge.setRelation(e.getRelation());
-            edges.add(edge);
-        }
-        
-        // 如果没有数据，从 Wiki 重建
-        if (nodes.isEmpty()) {
-            return wikiKnowledgeGraphService.rebuildFromWiki();
-        }
-        
-        graph.setNodes(nodes);
-        graph.setEdges(edges);
-        return graph;
+        return wikiKnowledgeGraphService.getFullGraphFromWiki();
     }
     
     private GraphDataDTO generateSampleGraph() {

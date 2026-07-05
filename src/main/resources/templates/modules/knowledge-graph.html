@@ -18,6 +18,17 @@
             height: 600px;
             position: relative;
         }
+        .graph-hint {
+            position: absolute;
+            left: 1rem;
+            bottom: 1rem;
+            z-index: 10;
+            background: rgba(255,255,255,0.92);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
+            color: #666;
+        }
         .graph-controls {
             position: absolute;
             top: 1rem;
@@ -39,11 +50,8 @@
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/concepts">概念</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/entities">实体</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/data-assets">数据资产</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/charts">图表</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/knowledge-base">知识库</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/wiki">知识库</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/knowledge-base">知识问答</a></li>
                     <li class="nav-item"><a class="nav-link active" href="/knowledge-graph">知识图谱</a></li>
                 </ul>
             </div>
@@ -57,6 +65,7 @@
             <div class="col-md-3">
                 <div class="doc-selector mb-3">
                     <h6 class="mb-3">Wiki 知识源</h6>
+                    <p class="text-muted small mb-2">图谱基于 <code>wiki/</code> 目录自动生成，包含文档引用、概念关联与血缘关系。</p>
                     <select class="form-select mb-2" id="wikiSelect" onchange="loadWikiSubgraph()">
                         <option value="">完整 Wiki 图谱</option>
                     </select>
@@ -125,6 +134,9 @@
                         </button>
                     </div>
                     <div id="graphChart" style="width: 100%; height: 100%;"></div>
+                    <div class="graph-hint">
+                        <i class="bi bi-cursor"></i> 点击节点可跳转到知识库对应文档
+                    </div>
                 </div>
             </div>
         </div>
@@ -189,6 +201,7 @@
             const nodes = data?.nodes?.map(n => ({
                 id: n.id,
                 name: n.name,
+                wikiPath: n.wikiPath || extractWikiPath(n.id),
                 symbolSize: n.symbolSize || 30,
                 category: n.category,
                 itemStyle: n.itemStyle,
@@ -208,7 +221,22 @@
             const categories = [...new Set(nodes.map(n => n.category))].map(c => ({ name: c }));
             
             graphChart.setOption({
-                tooltip: {},
+                tooltip: {
+                    formatter: params => {
+                        if (params.dataType === 'node') {
+                            const path = params.data.wikiPath || extractWikiPath(params.data.id) || '';
+                            let html = `<strong>${params.data.name}</strong><br/>类型：${params.data.category || ''}`;
+                            if (path) {
+                                html += `<br/>路径：wiki/${path}<br/><span style="color:#4a6fa5">点击查看文档</span>`;
+                            }
+                            return html;
+                        }
+                        if (params.dataType === 'edge') {
+                            return params.data.value || params.data.label?.formatter || '';
+                        }
+                        return '';
+                    }
+                },
                 legend: { data: categories.map(c => c.name) },
                 series: [{
                     type: 'graph',
@@ -233,6 +261,24 @@
                     }
                 }]
             });
+
+            graphChart.off('click');
+            graphChart.on('click', params => {
+                if (params.dataType !== 'node') {
+                    return;
+                }
+                const wikiPath = params.data.wikiPath || extractWikiPath(params.data.id);
+                if (wikiPath) {
+                    window.location.href = '/wiki?path=' + encodeURIComponent(wikiPath);
+                }
+            });
+        }
+
+        function extractWikiPath(nodeId) {
+            if (nodeId && nodeId.startsWith('wiki:')) {
+                return nodeId.substring(5);
+            }
+            return null;
         }
         
         function updateStats(data) {
