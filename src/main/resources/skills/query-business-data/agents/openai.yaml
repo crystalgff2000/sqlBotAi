@@ -1,0 +1,7 @@
+interface:
+  display_name: "自然语言问数"
+  short_description: "结合企业知识库查询 MySQL 并返回可视化图表与分析"
+  default_prompt: "Use $query-business-data to answer my business data question with verified MySQL results, a chart, and concise analysis."
+
+policy:
+  allow_implicit_invocation: true

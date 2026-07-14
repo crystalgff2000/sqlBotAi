@@ -80,3 +80,16 @@ rag:
   rebuild-on-startup: true
   max-context-length: 4000
   cache-dir: data/rag-cache
+
+# 业务查数 skill（query-business-data）
+query-business-data:
+  enabled: true
+  python-path: python3
+  output-dir: data/query-results
+  ssh-host: 120.48.17.175
+  ssh-user: root
+  # ssh-identity-file: ~/.ssh/id_ed25519
+  database: ADS
+  mysql-config: /root/.ai-data-query.cnf
+  max-rows: 500
+  timeout-ms: 30000

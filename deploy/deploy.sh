@@ -35,56 +35,26 @@ else
     SCP_CMD=("${SCP_BASE[@]}")
 fi
 
-JAR="$PROJECT_DIR/target/sqlBotAi-1.0.0.jar"
+echo "==> [1/3] 打包部署包..."
+bash "$SCRIPT_DIR/package-artifacts.sh"
 
-echo "==> [1/4] 打包项目..."
-cd "$PROJECT_DIR"
-mvn clean package -DskipTests -q
-
-if [[ ! -f "$JAR" ]]; then
-    echo "错误: 未找到 $JAR"
+TARBALL="$PROJECT_DIR/dist/sqlbotai-deploy.tar.gz"
+if [[ ! -f "$TARBALL" ]]; then
+    echo "错误: 未找到 $TARBALL"
     exit 1
 fi
 
-echo "==> [2/4] 上传文件到 $SERVER_HOST ..."
-"${SCP_CMD[@]}" "$JAR" "$SERVER_USER@$SERVER_HOST:/tmp/sqlBotAi.jar"
-"${SCP_CMD[@]}" "$SCRIPT_DIR/sqlbotai.service" "$SERVER_USER@$SERVER_HOST:/tmp/sqlbotai.service"
-"${SCP_CMD[@]}" "$SCRIPT_DIR/nginx-sqlbotai.conf" "$SERVER_USER@$SERVER_HOST:/tmp/nginx-sqlbotai.conf"
-"${SCP_CMD[@]}" "$SCRIPT_DIR/install-server.sh" "$SERVER_USER@$SERVER_HOST:/tmp/install-server.sh"
+echo "==> [2/3] 上传到 $SERVER_HOST ..."
+"${SCP_CMD[@]}" "$TARBALL" "$SERVER_USER@$SERVER_HOST:/tmp/sqlbotai-deploy.tar.gz"
 
-echo "==> [3/4] 安装/更新服务器环境..."
-"${SSH_CMD[@]}" "$SERVER_USER@$SERVER_HOST" "bash -s" <<REMOTE
+echo "==> [3/3] 服务器安装并启动..."
+"${SSH_CMD[@]}" "$SERVER_USER@$SERVER_HOST" "bash -s" <<'REMOTE'
 set -euo pipefail
-APP_HOME="$APP_HOME"
-
-if [[ ! -f /etc/systemd/system/sqlbotai.service ]]; then
-    chmod +x /tmp/install-server.sh
-    APP_HOME="\$APP_HOME" bash /tmp/install-server.sh
-else
-    cp /tmp/sqlbotai.service /etc/systemd/system/sqlbotai.service
-    cp /tmp/nginx-sqlbotai.conf /etc/nginx/conf.d/sqlbotai.conf
-    systemctl daemon-reload
-    nginx -t && systemctl restart nginx
-fi
-
-mkdir -p "\$APP_HOME"/{app,data,logs,config}
-cp /tmp/sqlBotAi.jar "\$APP_HOME/app/sqlBotAi.jar"
-rm -rf "\$APP_HOME/app/exploded"
-mkdir -p "\$APP_HOME/app/exploded"
-unzip -q -o "\$APP_HOME/app/sqlBotAi.jar" -d "\$APP_HOME/app/exploded"
-chown -R sqlbotai:sqlbotai "\$APP_HOME"
-
-cat > "\$APP_HOME/config/env" <<ENV
-DB_PASSWORD=${DB_PASSWORD:-}
-DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
-DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
-ENV
-chmod 600 "\$APP_HOME/config/env"
-chown sqlbotai:sqlbotai "\$APP_HOME/config/env"
+cd /tmp
+rm -rf sqlbotai-bundle
+tar xzf sqlbotai-deploy.tar.gz
+bash sqlbotai-bundle/install-on-server.sh /tmp/sqlbotai-bundle
 REMOTE
-
-echo "==> [4/4] 启动服务..."
-"${SSH_CMD[@]}" "$SERVER_USER@$SERVER_HOST" "systemctl restart sqlbotai && sleep 5 && systemctl is-active sqlbotai"
 
 echo ""
 echo "=========================================="

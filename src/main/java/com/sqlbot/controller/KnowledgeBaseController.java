@@ -25,7 +25,7 @@ public class KnowledgeBaseController {
 
     @GetMapping
     public String index(Model model) {
-        model.addAttribute("title", "\u77e5\u8bc6\u5e93\u95ee\u7b54");
+        model.addAttribute("title", "\u77e5\u8bc6\u95ee\u7b54");
         model.addAttribute("documents", knowledgeBaseService.findAll());
         return "modules/knowledge-base";
     }

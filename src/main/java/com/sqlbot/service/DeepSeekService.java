@@ -42,8 +42,9 @@ public class DeepSeekService {
                 要求：
                 1. 只使用上下文中明确出现的事实、公式、字段、规则和定义，不得编造；
                 2. 充分整合上下文，给出完整、准确的中文回答；
-                3. 回答末尾列出引用来源路径（wiki/...）；
-                4. 若上下文确实无法回答问题，仅回复：「本地 Wiki 知识库中未找到该问题的相关内容。」，不要补充外部知识。
+                3. 使用 Markdown 格式输出：首段为**直接答案**；要点用 `-` 列表；字段名、表名用反引号包裹；
+                4. 回答末尾单独一段 provenance，每行一个字段，格式为「来源层级：...」「依据页面：...」；
+                5. 若上下文确实无法回答问题，仅回复：「本地 Wiki 知识库中未找到该问题的相关内容。」，不要补充外部知识。
                 """;
         String userPrompt = "【本地 Wiki 知识库上下文】\n" + context + "\n\n【用户问题】\n" + question;
         return chatInternal(systemPrompt, userPrompt, 0.3);
@@ -61,6 +62,48 @@ public class DeepSeekService {
                 """;
         String userPrompt = "【知识库上下文】\n" + context + "\n\n【用户问题】\n" + question;
         return chatInternal(systemPrompt, userPrompt, 0.7);
+    }
+
+    public String generateSql(String question, String wikiContext, String skillPrompt) {
+        String systemPrompt = skillPrompt + """
+
+                你现在处于 SQL 生成阶段。请严格依据 Wiki 上下文生成一条 MySQL 8.4 只读查询。
+                要求：
+                1. 只输出一条 SELECT 或 WITH ... SELECT 语句；
+                2. 使用 ADS/DIM/CDM 全限定表名；
+                3. 不要 SQL 注释，不要多条语句；
+                4. 轮动专案与进攻专案视为同一项目；
+                5. 省区字段为 lev3_name，大区字段为 lev2_name；禁止使用 province_name、region_name 等臆造字段；
+                6. 查询奖励金额时使用 ADS.ads_bi_attack_exemplary_case_final_reward_df 的 final_reward，不要用 estimate_reward；
+                7. 大区/省区维度来自 ADS.ads_bi_attack_exemplary_case_target_achieve_df；按省区汇总奖励时，先将目标达成表收敛到 data_date + politics_code + coalesce(shop_code, chainstore_code) 粒度，再关联产品系列粒度的奖励表，避免行膨胀；
+                8. 最新一期用 MAX(data_date)；用户指定大区时，用 lev2_name 过滤，例如 lev2_name = '中一区'；
+                9. 若信息不足，仍尽量给出最合理的查询，不要输出解释文字。
+                """;
+        String userPrompt = "【Wiki 知识上下文】\n" + wikiContext + "\n\n【用户问题】\n" + question;
+        return chatInternal(systemPrompt, userPrompt, 0.1);
+    }
+
+    public String summarizeQueryResult(
+            String question,
+            String wikiContext,
+            String resultJson,
+            String executedSql,
+            boolean truncated) {
+        String systemPrompt = """
+                你是 AI 数据资产平台助手。请基于 Wiki 口径和 MySQL 查询结果，用中文给出业务分析。
+                要求：
+                1. 先给出**直接答案**（首段加粗）；
+                2. 再用 2-4 条 `-` 要点总结结论，只能依据返回数据，不得编造；字段名、表名用反引号；
+                3. 末尾单独一段 provenance，每行一个字段：来源层级、依据页面、执行表、数据范围、返回行数、置信度；
+                4. 若结果被截断，必须明确提示汇总可能不完整。
+                5. 全文使用 Markdown 格式，不要使用 HTML。
+                """;
+        String userPrompt = "【Wiki 知识上下文】\n" + wikiContext
+                + "\n\n【用户问题】\n" + question
+                + "\n\n【执行 SQL】\n" + executedSql
+                + "\n\n【查询结果 JSON】\n" + resultJson
+                + "\n\n【是否截断】\n" + truncated;
+        return chatInternal(systemPrompt, userPrompt, 0.2);
     }
 
     private String chatInternal(String systemPrompt, String userPrompt, double temperature) {

@@ -45,3 +45,13 @@ rag:
   vector-store: dashscope
   rebuild-on-startup: true
   cache-dir: /opt/sqlbotai/data/rag-cache
+
+query-business-data:
+  enabled: true
+  connection-mode: local
+  python-path: python3
+  output-dir: /opt/sqlbotai/data/query-results
+  mysql-config: /opt/sqlbotai/config/mysql.cnf
+  database: ADS
+  max-rows: 500
+  timeout-ms: 30000

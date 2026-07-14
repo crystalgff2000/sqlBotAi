@@ -4,6 +4,8 @@ import com.sqlbot.config.RagProperties;
 import com.sqlbot.dto.ChatAnswerDTO;
 import com.sqlbot.entity.KnowledgeDocument;
 import com.sqlbot.repository.KnowledgeDocumentRepository;
+import com.sqlbot.service.query.QueryBusinessDataService;
+import com.sqlbot.service.query.QueryIntentService;
 import com.sqlbot.service.rag.LocalRagService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +43,13 @@ public class KnowledgeBaseService {
 
     @Autowired
     private DeepSeekService deepSeekService;
-    
+
+    @Autowired
+    private QueryIntentService queryIntentService;
+
+    @Autowired
+    private QueryBusinessDataService queryBusinessDataService;
+
     private final String UPLOAD_DIR = "src/main/resources/knowledge-base/";
     
     public List<KnowledgeDocument> findAll() {
@@ -100,6 +108,16 @@ public class KnowledgeBaseService {
         }
 
         String trimmedQuestion = question.trim();
+
+        if (queryIntentService.isDataQuery(trimmedQuestion)) {
+            log.info("Routing question to query-business-data skill: {}", trimmedQuestion);
+            try {
+                return queryBusinessDataService.answer(trimmedQuestion);
+            } catch (Exception e) {
+                log.error("Query business data failed", e);
+                return new ChatAnswerDTO("业务查数失败：" + e.getMessage(), "error", new String[0]);
+            }
+        }
 
         if (ragProperties.isEnabled()) {
             try {

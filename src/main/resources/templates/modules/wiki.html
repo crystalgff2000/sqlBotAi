@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">知识库</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar { background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); }
+        .wiki-layout {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            min-height: calc(100vh - 120px);
+        }
+        .wiki-sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 120px);
+        }
+        .wiki-sidebar-header {
+            padding: 1rem 1rem 0.75rem;
+            border-bottom: 1px solid #eee;
+        }
+        .wiki-tree {
+            overflow-y: auto;
+            padding: 0.75rem;
+            flex: 1;
+        }
+        .wiki-content {
+            flex: 1;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 2rem;
+            overflow-y: auto;
+            max-height: calc(100vh - 120px);
+        }
+        .tree-folder, .tree-page {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .tree-folder ul {
+            list-style: none;
+            padding-left: 1rem;
+            margin: 0.15rem 0;
+        }
+        .tree-item {
+            margin: 0.1rem 0;
+        }
+        .tree-toggle {
+            border: none;
+            background: none;
+            color: #4a6fa5;
+            padding: 0.15rem 0.25rem;
+            vertical-align: middle;
+        }
+        .tree-link {
+            display: inline-block;
+            width: calc(100% - 1.5rem);
+            text-align: left;
+            border: none;
+            background: none;
+            color: #333;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+        .tree-link:hover, .tree-link.active {
+            background: #eef3fa;
+            color: #3a5a8a;
+        }
+        .tree-folder-label {
+            font-size: 0.9rem;
+            color: #555;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+        }
+        .wiki-meta {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .wiki-body h1, .wiki-body h2, .wiki-body h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .wiki-body pre {
+            background: #f6f8fa;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        .wiki-body code {
+            background: #f6f8fa;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+        }
+        .wiki-body pre code {
+            background: transparent;
+            padding: 0;
+        }
+        .wiki-body table {
+            width: 100%;
+            margin: 1rem 0;
+        }
+        .wiki-body blockquote {
+            border-left: 4px solid #4a6fa5;
+            padding-left: 1rem;
+            color: #666;
+        }
+        .wiki-empty {
+            color: #888;
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        @media (max-width: 992px) {
+            .wiki-layout { flex-direction: column; }
+            .wiki-sidebar, .wiki-content { max-height: none; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand" href="/"><i class="bi bi-cpu"></i> AI数据资产平台</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/wiki">知识库</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/knowledge-base">知识问答</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/knowledge-graph">知识图谱</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 pb-4">
+        <div class="wiki-layout">
+            <aside class="wiki-sidebar">
+                <div class="wiki-sidebar-header">
+                    <h5 class="mb-2"><i class="bi bi-journal-bookmark text-primary"></i> 模块索引</h5>
+                    <input type="search" class="form-control form-control-sm" id="treeSearch"
+                           placeholder="搜索文档标题或路径...">
+                    <small class="text-muted d-block mt-2">
+                        共 <span th:text="${pageCount}">0</span> 篇文档
+                    </small>
+                </div>
+                <div class="wiki-tree" id="wikiTree">
+                    <div class="text-muted small px-2">加载中...</div>
+                </div>
+            </aside>
+
+            <main class="wiki-content">
+                <div id="pageContent">
+                    <div class="wiki-empty">
+                        <i class="bi bi-file-earmark-text display-4 d-block mb-3"></i>
+                        请从左侧选择一篇文档
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        let catalogTree = null;
+        let activePath = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCatalog();
+            document.getElementById('treeSearch').addEventListener('input', filterTree);
+        });
+
+        function getInitialWikiPath() {
+            const params = new URLSearchParams(window.location.search);
+            const path = params.get('path');
+            return path && path.trim() ? path.trim() : null;
+        }
+
+        async function loadCatalog() {
+            try {
+                const res = await fetch('/wiki/api/catalog');
+                const json = await res.json();
+                if (json.code !== 200) {
+                    throw new Error(json.message || '加载目录失败');
+                }
+                catalogTree = json.data;
+                renderTree(catalogTree);
+                await loadPage(getInitialWikiPath());
+            } catch (e) {
+                document.getElementById('wikiTree').innerHTML =
+                    '<div class="text-danger small px-2">目录加载失败</div>';
+            }
+        }
+
+        function renderTree(node, filterText = '') {
+            const container = document.getElementById('wikiTree');
+            container.innerHTML = '';
+            const ul = document.createElement('ul');
+            ul.className = 'tree-folder';
+            node.children.forEach(child => {
+                const element = buildNode(child, filterText);
+                if (element) {
+                    ul.appendChild(element);
+                }
+            });
+            if (ul.children.length === 0) {
+                container.innerHTML = '<div class="text-muted small px-2">无匹配文档</div>';
+                return;
+            }
+            container.appendChild(ul);
+        }
+
+        function buildNode(node, filterText) {
+            if (node.page) {
+                if (filterText && !matchesFilter(node, filterText)) {
+                    return null;
+                }
+                const li = document.createElement('li');
+                li.className = 'tree-item';
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'tree-link';
+                btn.dataset.path = node.path;
+                btn.innerHTML = '<i class="bi bi-file-text me-1"></i>' + escapeHtml(node.title || node.name);
+                btn.addEventListener('click', () => loadPage(node.path));
+                li.appendChild(btn);
+                return li;
+            }
+
+            const childItems = [];
+            node.children.forEach(child => {
+                const element = buildNode(child, filterText);
+                if (element) {
+                    childItems.push(element);
+                }
+            });
+
+            if (childItems.length === 0) {
+                if (filterText && !(node.name || '').toLowerCase().includes(filterText)) {
+                    return null;
+                }
+                if (!filterText) {
+                    return null;
+                }
+            }
+
+            const li = document.createElement('li');
+            li.className = 'tree-item';
+
+            const header = document.createElement('div');
+            header.className = 'd-flex align-items-center';
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'tree-toggle';
+            toggle.innerHTML = '<i class="bi bi-chevron-down"></i>';
+            toggle.addEventListener('click', () => {
+                const icon = toggle.querySelector('i');
+                const list = li.querySelector(':scope > ul');
+                if (list.style.display === 'none') {
+                    list.style.display = '';
+                    icon.className = 'bi bi-chevron-down';
+                } else {
+                    list.style.display = 'none';
+                    icon.className = 'bi bi-chevron-right';
+                }
+            });
+
+            const label = document.createElement('span');
+            label.className = 'tree-folder-label';
+            label.innerHTML = '<i class="bi bi-folder2-open me-1"></i>' + escapeHtml(node.name);
+
+            header.appendChild(toggle);
+            header.appendChild(label);
+            li.appendChild(header);
+
+            const ul = document.createElement('ul');
+            childItems.forEach(item => ul.appendChild(item));
+            li.appendChild(ul);
+            return li;
+        }
+
+        function matchesFilter(node, filterText) {
+            const text = filterText.toLowerCase();
+            const title = (node.title || node.name || '').toLowerCase();
+            const path = (node.path || '').toLowerCase();
+            return title.includes(text) || path.includes(text);
+        }
+
+        function filterTree(event) {
+            const value = event.target.value.trim().toLowerCase();
+            if (!catalogTree) {
+                return;
+            }
+            renderTree(catalogTree, value);
+            highlightActive();
+        }
+
+        async function loadPage(path) {
+            try {
+                const url = path ? '/wiki/api/page?path=' + encodeURIComponent(path) : '/wiki/api/page';
+                const res = await fetch(url);
+                const json = await res.json();
+                if (json.code !== 200) {
+                    throw new Error(json.message || '加载页面失败');
+                }
+                activePath = json.data.relativePath;
+                renderPage(json.data);
+                highlightActive();
+                if (window.history.replaceState) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('path', activePath);
+                    window.history.replaceState({}, '', url);
+                }
+            } catch (e) {
+                document.getElementById('pageContent').innerHTML =
+                    '<div class="alert alert-danger">' + escapeHtml(e.message) + '</div>';
+            }
+        }
+
+        function renderPage(page) {
+            const badges = [];
+            if (page.type) {
+                badges.push('<span class="badge bg-primary me-1">' + escapeHtml(page.type) + '</span>');
+            }
+            if (page.domain) {
+                badges.push('<span class="badge bg-secondary me-1">' + escapeHtml(page.domain) + '</span>');
+            }
+
+            const html = marked.parse(page.body || '');
+            document.getElementById('pageContent').innerHTML = `
+                <div class="wiki-meta">
+                    <h2 class="mb-2">${escapeHtml(page.title)}</h2>
+                    <div class="mb-2">${badges.join('')}</div>
+                    <small class="text-muted"><i class="bi bi-folder2"></i> wiki/${escapeHtml(page.relativePath)}</small>
+                </div>
+                <div class="wiki-body">${html}</div>
+            `;
+        }
+
+        function highlightActive() {
+            document.querySelectorAll('.tree-link').forEach(link => {
+                link.classList.toggle('active', link.dataset.path === activePath);
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

@@ -123,6 +123,14 @@ public class WikiKnowledgeGraphService {
         return result;
     }
 
+    public GraphDataDTO getFullGraphFromWiki() {
+        GraphBuildResult buildResult = buildGraph(wikiSearchService.getAllPages());
+        GraphDataDTO graph = new GraphDataDTO();
+        graph.setNodes(buildResult.nodes());
+        graph.setEdges(buildResult.edges());
+        return graph;
+    }
+
     public GraphDataDTO getSubgraph(String relativePath) {
         List<WikiPageDTO> pages = wikiSearchService.getAllPages();
         GraphBuildResult full = buildGraph(pages);
@@ -163,6 +171,7 @@ public class WikiKnowledgeGraphService {
             node.setId(nodeId);
             node.setName(page.getTitle());
             node.setCategory(category);
+            node.setWikiPath(page.getRelativePath());
             node.setSymbolSize(CATEGORY_SIZES.getOrDefault(category, 28));
 
             Map<String, Object> style = new HashMap<>();

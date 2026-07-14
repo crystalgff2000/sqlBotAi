@@ -7,13 +7,18 @@ APP_USER="${APP_USER:-sqlbotai}"
 echo "==> 安装 Java 17..."
 if command -v apt-get &>/dev/null; then
     apt-get update -qq
-    apt-get install -y openjdk-17-jre-headless nginx unzip
+    apt-get install -y openjdk-17-jre-headless nginx unzip python3 python3-pip mysql-client
 elif command -v yum &>/dev/null; then
-    yum install -y java-17-openjdk-headless nginx unzip
+    yum install -y java-17-openjdk-headless nginx unzip python3 python3-pip mysql
 else
     echo "不支持的系统，请手动安装 Java 17 和 Nginx"
     exit 1
 fi
+
+echo "==> 安装 Python Pillow（图表渲染依赖，兼容 Python 3.6）..."
+python3 -m pip install --upgrade 'pip<21' 'setuptools<60' wheel
+python3 -m pip install 'Pillow<9'
+python3 -c "from PIL import Image; print('Pillow OK:', Image.__version__)"
 
 echo "==> 创建应用用户和目录..."
 id "$APP_USER" &>/dev/null || useradd -r -s /bin/false "$APP_USER"

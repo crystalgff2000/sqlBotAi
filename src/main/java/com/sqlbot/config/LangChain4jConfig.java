@@ -13,9 +13,6 @@ import java.time.Duration;
 @Configuration
 public class LangChain4jConfig {
 
-    private static final String DASHSCOPE_EMBEDDING_PATH =
-            "/api/v1/services/embeddings/text-embedding/text-embedding";
-
     @Bean
     @ConditionalOnProperty(prefix = "deepseek", name = "enabled", havingValue = "true", matchIfMissing = true)
     public ChatModel deepSeekChatModel(DeepSeekProperties properties) {
@@ -30,11 +27,14 @@ public class LangChain4jConfig {
     @Bean
     @ConditionalOnProperty(prefix = "dashscope", name = "enabled", havingValue = "true", matchIfMissing = true)
     public EmbeddingModel dashScopeEmbeddingModel(DashScopeProperties properties) {
-        return QwenEmbeddingModel.builder()
+        QwenEmbeddingModel.QwenEmbeddingModelBuilder builder = QwenEmbeddingModel.builder()
                 .apiKey(properties.getApiKey())
-                .modelName(properties.getEmbeddingModel())
-                .baseUrl(normalizeDashScopeBaseUrl(properties.getBaseUrl()))
-                .build();
+                .modelName(properties.getEmbeddingModel());
+        String customBaseUrl = resolveDashScopeBaseUrl(properties.getBaseUrl());
+        if (customBaseUrl != null) {
+            builder.baseUrl(customBaseUrl);
+        }
+        return builder.build();
     }
 
     static String normalizeOpenAiBaseUrl(String baseUrl) {
@@ -45,11 +45,19 @@ public class LangChain4jConfig {
         return normalized + "/v1";
     }
 
-    static String normalizeDashScopeBaseUrl(String baseUrl) {
-        String normalized = baseUrl == null ? "" : baseUrl.trim().replaceAll("/$", "");
-        if (normalized.endsWith(DASHSCOPE_EMBEDDING_PATH)) {
-            return normalized;
+    /**
+     * QwenEmbeddingModel / DashScope SDK 自带默认 endpoint。
+     * 仅在用户显式配置非默认根地址时才传入 baseUrl，避免路径重复拼接。
+     */
+    static String resolveDashScopeBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return null;
         }
-        return normalized + DASHSCOPE_EMBEDDING_PATH;
+        String normalized = baseUrl.trim().replaceAll("/$", "");
+        if ("https://dashscope.aliyuncs.com".equals(normalized)
+                || "http://dashscope.aliyuncs.com".equals(normalized)) {
+            return null;
+        }
+        return normalized;
     }
 }
