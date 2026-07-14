@@ -32,20 +32,43 @@ logs/
 # Wiki 知识库（整目录敏感数据，不入库）
 src/main/resources/wiki/
 
-# 本地配置与 API Key（禁止提交真实密钥）
+# 本地配置与敏感凭据（禁止提交真实密钥/密码）
 .env
 .env.*
 !.env.example
 *.local
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+id_ecdsa
+**/credentials.json
+**/secrets.json
+**/secret.yaml
+**/secret.yml
+**/secret.properties
+
+# 应用与部署配置（含密码/API Key 的真实文件）
 application-local.yml
 application-local.properties
 src/main/resources/application.yml
 deploy/deploy.env
 deploy/config/
 **/config/env
+**/server.env
+**/*.cnf
+**/mysql.cnf
+**/.ai-data-query.cnf
 
-# RAG embedding cache
-data/rag-cache/
+# 构建产物与部署包（可能含打包进的 server.env / 密钥）
+dist/
+sqlbotai-deploy.tar.gz
+
+# 本地运行数据（查数结果、向量缓存、H2 等）
+data/
 
 # Java
 *.class

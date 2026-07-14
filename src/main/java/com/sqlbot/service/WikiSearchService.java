@@ -14,8 +14,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,6 +32,29 @@ public class WikiSearchService {
     private static final Pattern TITLE_PATTERN = Pattern.compile("^title:\\s*[\"']?(.+?)[\"']?\\s*$", Pattern.MULTILINE);
     private static final Pattern TYPE_PATTERN = Pattern.compile("^type:\\s*[\"']?(.+?)[\"']?\\s*$", Pattern.MULTILINE);
     private static final Pattern DOMAIN_PATTERN = Pattern.compile("^domain:\\s*\\[?([^\\]\\n]+)\\]?\\s*$", Pattern.MULTILINE);
+    private static final Pattern OFFLINE_MARKETING_PATTERN = Pattern.compile(
+            "轮动|进攻专案|进攻|线下营销|final_reward|扫码返利|返利",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern REWARD_QUERY_PATTERN = Pattern.compile(
+            "奖励|返利|final_reward",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern REGION_QUERY_PATTERN = Pattern.compile(
+            "大区|省区|地区|中一区|中二区|lev2_name|lev3_name",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final List<String> OFFLINE_MARKETING_BASE_PAGES = List.of(
+            "pages/references/线下营销域.md",
+            "pages/数据资产/线下营销域/指标/进攻专案最终奖励.md"
+    );
+    private static final List<String> OFFLINE_MARKETING_REWARD_PAGES = List.of(
+            "pages/数据资产/线下营销域/表/进攻专案最终奖励表.md"
+    );
+    private static final List<String> OFFLINE_MARKETING_REGION_PAGES = List.of(
+            "pages/数据资产/线下营销域/表/进攻专案目标达成表.md"
+    );
+    private static final Map<String, String> BUSINESS_ALIASES = buildBusinessAliases();
 
     private final WikiProperties wikiProperties;
     private final List<WikiDocument> documents = new ArrayList<>();
@@ -62,6 +88,69 @@ public class WikiSearchService {
     }
 
     public List<WikiSearchResult> search(String question) {
+        return searchInternal(question, wikiProperties.getMaxResults());
+    }
+
+    public List<WikiSearchResult> searchExpanded(String question, int maxResults) {
+        LinkedHashMap<String, WikiSearchResult> merged = new LinkedHashMap<>();
+        for (String query : expandBusinessQueries(question)) {
+            for (WikiSearchResult result : searchInternal(query, maxResults)) {
+                WikiSearchResult existing = merged.get(result.getRelativePath());
+                if (existing == null || result.getScore() > existing.getScore()) {
+                    merged.put(result.getRelativePath(), result);
+                }
+            }
+        }
+
+        List<WikiSearchResult> results = new ArrayList<>(merged.values());
+        results.sort(Comparator.comparingInt(WikiSearchResult::getScore).reversed());
+        if (results.size() > maxResults) {
+            return results.subList(0, maxResults);
+        }
+        return results;
+    }
+
+    public boolean matchesOfflineMarketingDomain(String question) {
+        return question != null && OFFLINE_MARKETING_PATTERN.matcher(question).find();
+    }
+
+    public List<String> resolveMandatoryOfflineMarketingPages(String question) {
+        if (!matchesOfflineMarketingDomain(question)) {
+            return List.of();
+        }
+
+        LinkedHashSet<String> paths = new LinkedHashSet<>(OFFLINE_MARKETING_BASE_PAGES);
+        if (REWARD_QUERY_PATTERN.matcher(question).find()) {
+            paths.addAll(OFFLINE_MARKETING_REWARD_PAGES);
+        }
+        if (REGION_QUERY_PATTERN.matcher(question).find()) {
+            paths.addAll(OFFLINE_MARKETING_REGION_PAGES);
+        }
+        return List.copyOf(paths);
+    }
+
+    public List<String> expandBusinessQueries(String question) {
+        if (question == null || question.isBlank()) {
+            return List.of();
+        }
+
+        LinkedHashSet<String> queries = new LinkedHashSet<>();
+        String trimmed = question.trim();
+        queries.add(trimmed);
+
+        String expanded = trimmed;
+        for (Map.Entry<String, String> alias : BUSINESS_ALIASES.entrySet()) {
+            if (expanded.contains(alias.getKey())) {
+                expanded = expanded.replace(alias.getKey(), alias.getValue());
+            }
+        }
+        if (!expanded.equals(trimmed)) {
+            queries.add(expanded);
+        }
+        return List.copyOf(queries);
+    }
+
+    private List<WikiSearchResult> searchInternal(String question, int maxResults) {
         List<String> keywords = extractKeywords(question);
         if (keywords.isEmpty()) {
             return List.of();
@@ -83,11 +172,19 @@ public class WikiSearchService {
         }
 
         results.sort(Comparator.comparingInt(WikiSearchResult::getScore).reversed());
-        int limit = wikiProperties.getMaxResults();
-        if (results.size() > limit) {
-            return results.subList(0, limit);
+        if (results.size() > maxResults) {
+            return results.subList(0, maxResults);
         }
         return results;
+    }
+
+    private static Map<String, String> buildBusinessAliases() {
+        Map<String, String> aliases = new LinkedHashMap<>();
+        aliases.put("轮动专案", "进攻专案");
+        aliases.put("轮动", "进攻专案");
+        aliases.put("奖励情况", "最终奖励");
+        aliases.put("奖励金额", "最终奖励");
+        return aliases;
     }
 
     public List<WikiPageDTO> getAllPages() {
@@ -125,6 +222,10 @@ public class WikiSearchService {
             return matcher.group(1).trim();
         }
         return "";
+    }
+
+    public int getMaxResultsForDataQuery() {
+        return Math.max(wikiProperties.getMaxResults(), 6);
     }
 
     public boolean hasMatch(List<WikiSearchResult> results) {

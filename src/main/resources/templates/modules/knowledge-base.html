@@ -6,38 +6,252 @@
     <title th:text="${title}">知识问答</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
     <style>
-        body { background-color: #f8f9fa; }
-        .navbar { background: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%); }
-        .content-wrapper { margin-top: 2rem; }
+        :root {
+            --primary: #4a6fa5;
+            --primary-dark: #3a5a8a;
+            --bot-bg: #ffffff;
+            --user-bg: linear-gradient(135deg, #4a6fa5 0%, #3a5a8a 100%);
+        }
+        body { background-color: #f0f2f5; }
+        .navbar { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); }
+        .content-wrapper { margin-top: 2rem; margin-bottom: 2rem; }
         .chat-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            height: 500px;
+            background: #f8f9fb;
+            border-radius: 16px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid #e8ecf0;
+            height: 560px;
             overflow-y: auto;
-            padding: 1.5rem;
+            padding: 1.25rem;
+            scroll-behavior: smooth;
         }
+        .message-row {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            align-items: flex-start;
+        }
+        .message-row.user-row { flex-direction: row-reverse; }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1rem;
+        }
+        .avatar.bot { background: #e8f0fe; color: var(--primary); }
+        .avatar.user { background: var(--primary); color: white; }
         .message {
-            max-width: 80%;
-            margin-bottom: 1rem;
-            padding: 1rem;
-            border-radius: 12px;
+            max-width: 85%;
+            padding: 0;
         }
-        .message.user {
+        .message-bubble {
+            padding: 0.9rem 1.1rem;
+            border-radius: 14px;
+            line-height: 1.65;
+            font-size: 0.92rem;
+        }
+        .message.user .message-bubble {
+            background: var(--user-bg);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .message.bot .message-bubble {
+            background: var(--bot-bg);
+            color: #2c3e50;
+            border: 1px solid #e8ecf0;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.6rem;
+        }
+        .source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.2rem 0.55rem;
+            border-radius: 20px;
+            letter-spacing: 0.02em;
+        }
+        .source-badge.wiki { background: #d4edda; color: #155724; }
+        .source-badge.rag { background: #fff3cd; color: #856404; }
+        .source-badge.deepseek { background: #cce5ff; color: #004085; }
+        .source-badge.data-query { background: #e8daef; color: #4a235a; }
+        .source-badge.error { background: #f8d7da; color: #721c24; }
+        .answer-body { word-break: break-word; }
+        .answer-body p { margin-bottom: 0.55rem; }
+        .answer-body p:last-child { margin-bottom: 0; }
+        .answer-body ul, .answer-body ol {
+            margin: 0.4rem 0 0.6rem 0;
+            padding-left: 1.4rem;
+        }
+        .answer-body li { margin-bottom: 0.3rem; }
+        .answer-body strong { color: #1a365d; }
+        .answer-body code {
+            background: #f1f3f5;
+            color: #c0392b;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+        .answer-body h1, .answer-body h2, .answer-body h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0.6rem 0 0.4rem;
+            color: #1a365d;
+        }
+        .provenance-card {
+            margin-top: 0.85rem;
+            padding: 0.65rem 0.85rem;
+            background: #f8f9fa;
+            border-left: 3px solid var(--primary);
+            border-radius: 0 8px 8px 0;
+            font-size: 0.8rem;
+            color: #5a6a7a;
+        }
+        .provenance-card .prov-item {
+            display: flex;
+            gap: 0.4rem;
+            margin-bottom: 0.2rem;
+        }
+        .provenance-card .prov-label {
+            font-weight: 600;
+            color: #495057;
+            white-space: nowrap;
+        }
+        .ref-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin-top: 0.75rem;
+        }
+        .ref-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            font-size: 0.72rem;
+            padding: 0.2rem 0.5rem;
+            background: #e8f0fe;
+            color: #2c5282;
+            border-radius: 12px;
+            border: 1px solid #bee3f8;
+        }
+        .section-panel {
+            margin-top: 0.85rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .section-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.85rem;
+            background: #f7fafc;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .section-panel-header:hover { background: #edf2f7; }
+        .section-panel-body { padding: 0; }
+        .section-panel-body.collapsed { display: none; }
+        .result-table-wrap {
+            overflow-x: auto;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .result-table {
+            width: 100%;
+            margin: 0;
+            font-size: 0.8rem;
+            border-collapse: collapse;
+        }
+        .result-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .result-table th {
             background: #4a6fa5;
             color: white;
-            margin-left: auto;
-            text-align: right;
+            padding: 0.45rem 0.65rem;
+            font-weight: 600;
+            white-space: nowrap;
         }
-        .message.bot {
-            background: #f1f3f4;
-            color: #333;
+        .result-table td {
+            padding: 0.4rem 0.65rem;
+            border-bottom: 1px solid #edf2f7;
+            white-space: nowrap;
+        }
+        .result-table tbody tr:nth-child(even) { background: #f8fafc; }
+        .result-table tbody tr:hover { background: #ebf4ff; }
+        .sql-block-wrap {
+            position: relative;
+            background: #1e1e1e;
+        }
+        .sql-block {
+            margin: 0;
+            padding: 0.85rem 1rem;
+            color: #d4d4d4;
+            font-size: 0.78rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            line-height: 1.5;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.4rem;
+            right: 0.4rem;
+            font-size: 0.72rem;
+            padding: 0.15rem 0.45rem;
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+        .truncated-alert {
+            margin-top: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: #fff8e6;
+            border: 1px solid #ffe0a3;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            color: #856404;
+        }
+        .typing-dots span {
+            display: inline-block;
+            width: 6px; height: 6px;
+            background: #a0aec0;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: blink 1.4s infinite both;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1); }
         }
         .doc-card {
             background: white;
             border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
             padding: 1rem;
             margin-bottom: 1rem;
         }
@@ -49,17 +263,23 @@
             cursor: pointer;
             transition: all 0.3s;
         }
-        .message.bot .source-badge {
-            display: inline-block;
-            font-size: 0.75rem;
-            padding: 0.15rem 0.5rem;
-            border-radius: 4px;
-            margin-bottom: 0.5rem;
+        .upload-area:hover { border-color: var(--primary); background: #f8fbff; }
+        .input-group .form-control {
+            border-radius: 12px 0 0 12px;
+            border: 1px solid #e2e8f0;
+            padding: 0.65rem 1rem;
         }
-        .source-badge.wiki { background: #d4edda; color: #155724; }
-        .source-badge.rag { background: #fff3cd; color: #856404; }
-        .source-badge.deepseek { background: #cce5ff; color: #004085; }
-        .source-badge.error { background: #f8d7da; color: #721c24; }
+        .input-group .btn {
+            border-radius: 0 12px 12px 0;
+            padding: 0.65rem 1.25rem;
+        }
+        .table-meta {
+            padding: 0.4rem 0.85rem;
+            font-size: 0.75rem;
+            color: #718096;
+            background: #f7fafc;
+            border-top: 1px solid #edf2f7;
+        }
     </style>
 </head>
 <body>
@@ -83,8 +303,22 @@
         <div class="row">
             <div class="col-md-8">
                 <div class="chat-container" id="chatContainer">
-                    <div class="message bot">
-                        <i class="bi bi-robot"></i> 你好！我是 AI 数据资产平台助手。已启用<strong>本地 RAG</strong>（DashScope Embedding）：优先从 Wiki 语义检索并回答；仅当本地无匹配内容时，才调用 DeepSeek。
+                    <div class="message-row">
+                        <div class="avatar bot"><i class="bi bi-robot"></i></div>
+                        <div class="message bot">
+                            <div class="message-bubble">
+                                <div class="message-header">
+                                    <span class="source-badge rag"><i class="bi bi-stars"></i> 系统</span>
+                                </div>
+                                <div class="answer-body">
+                                    <p>你好！我是 <strong>AI 数据资产平台助手</strong>。</p>
+                                    <ul>
+                                        <li><strong>概念/口径类</strong>问题 → 本地 Wiki + RAG 检索回答</li>
+                                        <li><strong>业务数据类</strong>问题（金额、排名、达成率等）→ 自动生成 SQL 查询 MySQL</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="input-group mt-3">
@@ -128,7 +362,186 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/common.min.js"></script>
     <script>
+        marked.setOptions({ breaks: true, gfm: true });
+
+        let panelSeq = 0;
+        function nextPanelId(prefix) {
+            return `${prefix}-${++panelSeq}`;
+        }
+
+        const PROV_LABELS = ['来源层级', '依据页面', '执行表', '数据范围', '返回行数', '置信度', '限制', '数据新鲜度', 'Owner'];
+        const SOURCE_META = {
+            'data-query': { label: '业务查数', icon: 'bi-database-check', class: 'data-query' },
+            'rag':          { label: '本地 RAG', icon: 'bi-stars',         class: 'rag' },
+            'wiki':         { label: '本地 Wiki', icon: 'bi-book',         class: 'wiki' },
+            'deepseek':     { label: 'DeepSeek', icon: 'bi-cpu',          class: 'deepseek' },
+            'error':        { label: '错误',     icon: 'bi-exclamation-triangle', class: 'error' },
+        };
+
+        function getSourceMeta(source) {
+            return SOURCE_META[source] || { label: '系统', icon: 'bi-info-circle', class: 'error' };
+        }
+
+        function splitAnswer(answer) {
+            if (!answer) return { body: '', footer: [] };
+            const lines = answer.split('\n');
+            const bodyLines = [];
+            const footer = [];
+            let inFooter = false;
+            for (const line of lines) {
+                const trimmed = line.trim();
+                const isProv = PROV_LABELS.some(l => trimmed.startsWith(l + '：') || trimmed.startsWith(l + ':'));
+                if (isProv) {
+                    inFooter = true;
+                    const sep = trimmed.includes('：') ? '：' : ':';
+                    const idx = trimmed.indexOf(sep);
+                    footer.push({ label: trimmed.substring(0, idx), value: trimmed.substring(idx + 1).trim() });
+                } else if (inFooter && trimmed === '') {
+                    continue;
+                } else if (!inFooter) {
+                    bodyLines.push(line);
+                }
+            }
+            return { body: bodyLines.join('\n').trim(), footer };
+        }
+
+        function renderMarkdown(text) {
+            if (!text) return '';
+            let html = marked.parse(text);
+            html = html.replace(/wiki\/([^\s<"']+)/g, '<span class="ref-chip"><i class="bi bi-link-45deg"></i> wiki/$1</span>');
+            return html;
+        }
+
+        function renderProvenance(footer) {
+            if (!footer.length) return '';
+            const items = footer.map(f =>
+                `<div class="prov-item"><span class="prov-label">${escapeHtml(f.label)}</span><span>${escapeHtml(f.value)}</span></div>`
+            ).join('');
+            return `<div class="provenance-card"><div class="prov-item" style="margin-bottom:0.35rem;font-weight:600;color:#4a6fa5"><i class="bi bi-shield-check"></i> 来源溯源</div>${items}</div>`;
+        }
+
+        function renderReferences(refs) {
+            if (!refs || !refs.length) return '';
+            const chips = refs.map(r =>
+                `<span class="ref-chip"><i class="bi bi-file-earmark-text"></i> ${escapeHtml(r)}</span>`
+            ).join('');
+            return `<div class="ref-chips">${chips}</div>`;
+        }
+
+        function renderCollapsiblePanel(id, title, icon, content, expanded = true) {
+            const collapsed = expanded ? '' : ' collapsed';
+            const chevron = expanded ? 'bi-chevron-up' : 'bi-chevron-down';
+            return `
+                <div class="section-panel" id="panel-${id}">
+                    <div class="section-panel-header" onclick="togglePanel('${id}')">
+                        <span><i class="bi ${icon}"></i> ${title}</span>
+                        <i class="bi ${chevron}" id="chevron-${id}"></i>
+                    </div>
+                    <div class="section-panel-body${collapsed}" id="body-${id}">${content}</div>
+                </div>`;
+        }
+
+        function togglePanel(id) {
+            const body = document.getElementById('body-' + id);
+            const chevron = document.getElementById('chevron-' + id);
+            body.classList.toggle('collapsed');
+            chevron.classList.toggle('bi-chevron-up');
+            chevron.classList.toggle('bi-chevron-down');
+        }
+
+        function renderResultTable(columns, rows) {
+            const limitedRows = rows.slice(0, 20);
+            let html = '<div class="result-table-wrap"><table class="result-table"><thead><tr>';
+            columns.forEach(col => { html += `<th>${escapeHtml(col)}</th>`; });
+            html += '</tr></thead><tbody>';
+            limitedRows.forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => { html += `<td>${escapeHtml(cell ?? '')}</td>`; });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            const meta = rows.length > 20
+                ? `<div class="table-meta"><i class="bi bi-info-circle"></i> 仅展示前 20 行，共 ${rows.length} 行</div>`
+                : `<div class="table-meta"><i class="bi bi-table"></i> 共 ${rows.length} 行</div>`;
+            return html + meta;
+        }
+
+        function renderSqlBlock(sql) {
+            return `
+                <div class="sql-block-wrap">
+                    <button class="copy-btn" onclick="copySql(this)"><i class="bi bi-clipboard"></i> 复制</button>
+                    <pre class="sql-block">${escapeHtml(sql)}</pre>
+                </div>`;
+        }
+
+        function copySql(btn) {
+            const sql = btn.parentElement.querySelector('.sql-block').textContent;
+            navigator.clipboard.writeText(sql).then(() => {
+                btn.innerHTML = '<i class="bi bi-check"></i> 已复制';
+                setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i> 复制'; }, 2000);
+            });
+        }
+
+        function renderBotMessage(data) {
+            const meta = getSourceMeta(data.source || 'error');
+            const { body, footer } = splitAnswer(data.answer || '');
+            const bodyHtml = renderMarkdown(body);
+            const provHtml = renderProvenance(footer);
+            const refsHtml = renderReferences(data.references);
+
+            let panels = '';
+            if (data.truncated) {
+                panels += '<div class="truncated-alert"><i class="bi bi-exclamation-triangle"></i> 结果超过 500 行，当前仅展示部分数据，汇总分析可能不完整。</div>';
+            }
+            if (data.columns && data.rows && data.rows.length > 0) {
+                panels += renderCollapsiblePanel(nextPanelId('table'), '查询结果', 'bi-table', renderResultTable(data.columns, data.rows), true);
+            }
+            if (data.sql) {
+                panels += renderCollapsiblePanel(nextPanelId('sql'), '执行 SQL', 'bi-code-slash', renderSqlBlock(data.sql), false);
+            }
+
+            return `
+                <div class="message-row">
+                    <div class="avatar bot"><i class="bi bi-robot"></i></div>
+                    <div class="message bot">
+                        <div class="message-bubble">
+                            <div class="message-header">
+                                <span class="source-badge ${meta.class}"><i class="bi ${meta.icon}"></i> ${meta.label}</span>
+                            </div>
+                            <div class="answer-body">${bodyHtml}</div>
+                            ${provHtml}
+                            ${refsHtml}
+                            ${panels}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderUserMessage(text) {
+            return `
+                <div class="message-row user-row">
+                    <div class="avatar user"><i class="bi bi-person-fill"></i></div>
+                    <div class="message user">
+                        <div class="message-bubble">${escapeHtml(text)}</div>
+                    </div>
+                </div>`;
+        }
+
+        function renderLoading(id) {
+            return `
+                <div class="message-row" id="${id}">
+                    <div class="avatar bot"><i class="bi bi-robot"></i></div>
+                    <div class="message bot">
+                        <div class="message-bubble">
+                            <span class="typing-dots"><span></span><span></span><span></span></span>
+                            <span class="text-muted ms-1" style="font-size:0.85rem">思考中</span>
+                        </div>
+                    </div>
+                </div>`;
+        }
         async function loadDocuments() {
             const response = await fetch('/knowledge-base/api/documents');
             const result = await response.json();
@@ -188,49 +601,41 @@
             const input = document.getElementById('questionInput');
             const question = input.value.trim();
             if (!question) return;
-            
+
             const chatContainer = document.getElementById('chatContainer');
-            
-            // 添加用户消息
-            chatContainer.innerHTML += `
-                <div class="message user">
-                    ${question}
-                </div>
-            `;
+            chatContainer.insertAdjacentHTML('beforeend', renderUserMessage(question));
             input.value = '';
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            // 显示加载中
-            const loadingId = 'loading-' + Date.now();
-            chatContainer.innerHTML += `
-                <div class="message bot" id="${loadingId}">
-                    <i class="bi bi-hourglass-split"></i> 思考中...
-                </div>
-            `;
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            // 发送请求
-            const response = await fetch('/knowledge-base/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question })
-            });
-            
-            const result = await response.json();
-            const data = result.data || {};
-            const answer = data.answer || result.message || '无响应';
-            const source = data.source || 'unknown';
-            const sourceLabel = source === 'rag' ? '本地 RAG' : source === 'wiki' ? '本地 Wiki' : source === 'deepseek' ? 'DeepSeek' : '系统';
-            const sourceClass = source === 'rag' ? 'rag' : source === 'wiki' ? 'wiki' : source === 'deepseek' ? 'deepseek' : 'error';
 
-            // 替换加载消息
-            document.getElementById(loadingId).outerHTML = `
-                <div class="message bot">
-                    <span class="source-badge ${sourceClass}">${sourceLabel}</span>
-                    <i class="bi bi-robot"></i> ${answer.replace(/\n/g, '<br>')}
-                </div>
-            `;
+            const loadingId = 'loading-' + Date.now();
+            chatContainer.insertAdjacentHTML('beforeend', renderLoading(loadingId));
             chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const response = await fetch('/knowledge-base/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+                const result = await response.json();
+                const data = result.data || {};
+                if (!data.answer) data.answer = result.message || '无响应';
+                if (!data.source) data.source = result.code === 200 ? 'deepseek' : 'error';
+
+                document.getElementById(loadingId).outerHTML = renderBotMessage(data);
+            } catch (err) {
+                document.getElementById(loadingId).outerHTML = renderBotMessage({
+                    answer: '请求失败：' + err.message,
+                    source: 'error'
+                });
+            }
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
         }
 
         async function loadRagStats() {
